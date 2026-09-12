@@ -1,0 +1,153 @@
+<!-- Generated from index.html; edit that file, not this one. -->
+<title>CAM Tool Web</title>
+<meta name="description" content="Browser-based crash analysis module for ODOT GCAT exports — summary sheets, relative severity index, proportions, crash tree and collision diagram.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark">Ohio DOT &middot; Crash analysis</div>
+      <h1>CAM Tool Web</h1>
+      <p>The Crash Analysis Module, rebuilt to run in a browser. No Excel, no macros, no data connection &mdash; your file never leaves this device.</p>
+    </div>
+    <nav aria-label="Worksheets">
+      <div class="grp">Data</div>
+      <button data-go="setup" aria-current="true"><span class="no">01</span>Setup &amp; inputs</button>
+      <button data-go="data"><span class="no">10</span>Full crash data</button>
+      <div class="grp">Analysis</div>
+      <button data-go="summary"><span class="no">02</span>Quick summary</button>
+      <button data-go="analysis"><span class="no">03</span>Crash analysis</button>
+      <button data-go="unit1"><span class="no">04</span>Unit 1 analysis</button>
+      <button data-go="rsi"><span class="no">05</span>Relative severity index</button>
+      <button data-go="proportions"><span class="no">06</span>Proportions</button>
+      <button data-go="emphasis"><span class="no">07</span>Emphasis area</button>
+      <button data-go="tree"><span class="no">08</span>Crash tree</button>
+      <div class="grp">Diagram</div>
+      <button data-go="diagram"><span class="no">09</span>Collision diagram</button>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="titleblock">
+      <div class="tb-title">
+        <div class="eyebrow">Site</div>
+        <h2 id="tb-head">Untitled site</h2>
+      </div>
+      <div class="tb-field"><span>Years</span><strong id="tb-years">&ndash;</strong></div>
+      <div class="tb-field"><span>Crashes</span><strong id="tb-crashes">0</strong></div>
+      <div class="tb-field"><span>Fatal &amp; injury</span><strong id="tb-fi">0</strong></div>
+      <div class="tb-field"><span>Source file</span><strong id="tb-file" style="font-size:11px">&ndash;</strong></div>
+      <div class="tb-actions"><button class="btn" id="tb-print">Print</button></div>
+    </header>
+
+    <div class="sheet-area">
+
+      <section class="sheet on" id="sheet-setup">
+        <header>
+          <h3>Setup &amp; inputs</h3>
+          <p>Export a crash file from AASHTOWare Safety using the <strong>GCAT Format</strong> query, then load the CSV here. Everything is computed in this page &mdash; nothing is uploaded.</p>
+        </header>
+        <div class="dropzone" id="dropzone">
+          <h4>Drop a GCAT CSV export here</h4>
+          <p>Or choose a file. The tool reads the same columns the CAM Tool&rsquo;s <em>TIMS &ndash; GCAT Import</em> reads, matched by column name.</p>
+          <div class="dz-actions">
+            <button class="btn primary" id="pick">Choose CSV file</button>
+            <button class="btn" id="sample">Load sample site</button>
+            <input type="file" id="file" accept=".csv,text/csv" hidden>
+          </div>
+        </div>
+        <div id="msg" class="msg" style="display:none"></div>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-summary">
+        <header>
+          <h3>Quick summary</h3>
+          <p>Counts and percentages across every crash-level field, matching the CAM Tool&rsquo;s <em>Quick Summary</em> sheet.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-analysis">
+        <header>
+          <h3>Crash analysis</h3>
+          <p>Severity, harm and exposure crosstabs, with crashes by year, hour, month and type.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-unit1">
+        <header>
+          <h3>Unit 1 analysis</h3>
+          <p>Everything the report records about unit 1 &mdash; typically the at-fault vehicle.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-rsi">
+        <header>
+          <h3>Relative severity index</h3>
+          <p>Average crash cost per crash at this site, weighted by crash type against the statewide cost table.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-proportions">
+        <header>
+          <h3>Proportions</h3>
+          <p>How this site&rsquo;s crash mix compares with the statewide average for a site of the same type.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-emphasis">
+        <header>
+          <h3>Emphasis area</h3>
+          <p>Fatalities and serious injuries by Ohio Strategic Highway Safety Plan target group, year by year.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-tree">
+        <header>
+          <h3>Crash tree</h3>
+          <p>Crashes split by intersection relation, then by roadway departure and traffic control, with the ranked crash types on each branch.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-diagram">
+        <header>
+          <h3>Collision diagram</h3>
+          <p>An intersection collision diagram built from the at-fault unit&rsquo;s crash type and travel directions. Click a symbol for the crash behind it.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+      <section class="sheet" id="sheet-data">
+        <header>
+          <h3>Full crash data</h3>
+          <p>The decoded crash table. Column A links to the OH-1 report on the ODOT crash report service, as in the spreadsheet.</p>
+        </header>
+        <div class="body"></div>
+      </section>
+
+    </div>
+
+    <footer class="credits">
+      Reproduces the analysis of ODOT&rsquo;s Crash Analysis Module (CAM) Tool workbook. Code lookups, the relative
+      severity index cost table and the statewide proportions are taken from the workbook&rsquo;s own reference sheets
+      (proportions data set: AASHTOWare Safety, 2021&ndash;2025, updated June 2026). This is an independent
+      re-implementation and is not published by the Ohio Department of Transportation.
+    </footer>
+  </div>
+</div>
+
+<script src="assets/camref.js"></script>
+<script src="assets/sample.js"></script>
+<script src="assets/parse.js"></script>
+<script src="assets/analysis.js"></script>
+<script src="assets/diagram.js"></script>
+<script src="assets/app.js"></script>
