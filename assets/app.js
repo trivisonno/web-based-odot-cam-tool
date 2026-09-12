@@ -128,9 +128,9 @@
       stat("EPDO index", hd.epdo.toFixed(2)) +
       "</div>" +
 
+      '<p class="note">Type the site name into the formula bar above (cell A1) &mdash; it becomes the diagram and report heading.</p>' +
+
       '<div class="controls">' +
-      '<label class="field"><span>Diagram / report heading</span><input type="text" id="f-heading" value="' +
-      esc(state.heading) + '" placeholder="Denison Ave at W 65th St"></label>' +
       '<label class="field"><span>Year from</span><select id="f-yfrom">' + yopts + "</select></label>" +
       '<label class="field"><span>Year to</span><select id="f-yto">' + yopts + "</select></label>" +
       '<label class="field"><span>Maintenance authority</span><select id="f-auth"><option>All</option>' +
@@ -159,7 +159,6 @@
     $("#f-freeway").value = state.site.freeway;
     $("#f-site").value = state.site.siteType;
 
-    $("#f-heading").oninput = function () { state.heading = this.value; $("#tb-head").textContent = this.value || "Untitled site"; };
     $("#f-yfrom").onchange = function () { state.filters.yearFrom = +this.value; refresh(); };
     $("#f-yto").onchange = function () { state.filters.yearTo = +this.value; refresh(); };
     $("#f-auth").onchange = function () { state.filters.authority = this.value; refresh(); };
@@ -374,6 +373,7 @@
       state.site.siteType = this.value;
       var f = $("#f-site"); if (f) f.value = this.value;
       renderProportions();
+      gridifyAll();
     };
   }
 
@@ -714,16 +714,67 @@
   function refresh() {
     applyFilters();
     var hd = A.headline(state.records);
-    $("#tb-head").textContent = state.heading || "Untitled site";
-    $("#tb-years").textContent = hd.years.min === hd.years.max
-      ? String(hd.years.min) : hd.years.min + "–" + hd.years.max;
-    $("#tb-crashes").textContent = num(hd.crashes);
-    $("#tb-fi").textContent = num(hd.fiCrashes);
-    $("#tb-file").textContent = state.fileName || "–";
+    var yearsTxt = hd.years.min === hd.years.max ? String(hd.years.min) : hd.years.min + "–" + hd.years.max;
+
+    $("#titlebar-name").textContent = (state.heading || "Untitled site") + " – CAM Tool Web";
+    $("#fb-heading").value = state.heading || "";
+    $("#kpistrip").innerHTML =
+      kpi("Crashes", num(hd.crashes)) +
+      kpi("Years", yearsTxt) +
+      kpi("Fatal & inj.", num(hd.fiCrashes)) +
+      kpi("Fatalities", num(hd.fatalities), "fatal") +
+      kpi("Ser. inj.", num(hd.serious), "serious") +
+      kpi("EPDO", hd.epdo.toFixed(2));
+    $("#sb-crashes").textContent = num(hd.crashes);
+    $("#sb-fi").textContent = num(hd.fiCrashes);
+    $("#sb-years").textContent = yearsTxt;
+    $("#sb-file").textContent = state.fileName || "–";
+
     renderSetup(); renderSummary(); renderAnalysis(); renderUnit1();
     renderRSI(); renderProportions(); renderEmphasis(); renderTree();
     renderDiagram(); renderData();
+    gridifyAll();
   }
+  function kpi(label, value, cls) {
+    return '<div class="kpi ' + (cls || "") + '"><span>' + esc(label) + "</span><strong>" + esc(value) + "</strong></div>";
+  }
+
+  /* ---------- spreadsheet chrome: column letters + row numbers ---------- */
+  function colLetter(n) {
+    var s = ""; n += 1;
+    while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+  }
+  function gridify(table) {
+    if (table.dataset.gridified) return;
+    table.dataset.gridified = "1";
+    var headRow = table.tHead && table.tHead.rows[0];
+    var bodyRows = table.tBodies[0] ? Array.prototype.slice.call(table.tBodies[0].rows) : [];
+    var rows = (headRow ? [headRow] : []).concat(bodyRows);
+    if (!rows.length) return;
+    var maxCols = rows.reduce(function (m, r) { return Math.max(m, r.cells.length); }, 0);
+    var ruler = document.createElement("tr");
+    ruler.className = "xl-colhead";
+    var corner = document.createElement("th");
+    corner.className = "xl-corner";
+    ruler.appendChild(corner);
+    for (var c = 0; c < maxCols; c++) {
+      var th = document.createElement("th");
+      th.className = "xl-colletter";
+      th.textContent = colLetter(c);
+      ruler.appendChild(th);
+    }
+    if (!table.tHead) table.insertBefore(document.createElement("thead"), table.firstChild);
+    table.tHead.insertBefore(ruler, table.tHead.firstChild);
+    var rn = 1;
+    rows.forEach(function (r) {
+      var cell = document.createElement(r.parentNode.tagName === "THEAD" ? "th" : "td");
+      cell.className = "xl-rownum";
+      cell.textContent = rn++;
+      r.insertBefore(cell, r.firstChild);
+    });
+  }
+  function gridifyAll() { $$(".sheet-area table").forEach(gridify); }
 
   function load(text, name) {
     var recs;
@@ -788,12 +839,42 @@
     m.style.display = text ? "block" : "none";
   }
 
+  var SHEETS = [
+    { id: "setup", label: "Setup", group: "neutral", cell: "Setup" },
+    { id: "data", label: "Full Crash Data", group: "neutral", cell: "Data" },
+    { id: "summary", label: "Quick Summary", group: "gold", cell: "QuickSumm" },
+    { id: "analysis", label: "Crash Analysis", group: "gold", cell: "CrashAnl" },
+    { id: "unit1", label: "Unit 1 Analysis", group: "gold", cell: "Unit1" },
+    { id: "rsi", label: "RelativeSeverityIndex", group: "gold", cell: "RSI" },
+    { id: "proportions", label: "Proportions", group: "gold", cell: "Propn" },
+    { id: "emphasis", label: "Emphasis Area", group: "gold", cell: "Emphasis" },
+    { id: "tree", label: "CrashTree", group: "gold", cell: "CrashTree" },
+    { id: "diagram", label: "Collision Diagram", group: "green", cell: "ColDiag" }
+  ];
+
+  function buildTabs() {
+    var strip = $("#tabstrip");
+    strip.innerHTML = SHEETS.map(function (s) {
+      return '<button class="tab ' + s.group + '" data-go="' + s.id + '" role="tab" aria-selected="false">' +
+        esc(s.label) + "</button>";
+    }).join("");
+    $$(".tab", strip).forEach(function (b) {
+      b.onclick = function () { show(b.getAttribute("data-go")); };
+    });
+    $("#tabs-left").onclick = function () { strip.scrollBy({ left: -160, behavior: "smooth" }); };
+    $("#tabs-right").onclick = function () { strip.scrollBy({ left: 160, behavior: "smooth" }); };
+  }
+
   function show(id) {
     if (!$("#sheet-" + id)) id = "setup";
     $$(".sheet").forEach(function (s) { s.classList.toggle("on", s.id === "sheet-" + id); });
-    $$(".rail nav button").forEach(function (b) {
-      b.setAttribute("aria-current", b.getAttribute("data-go") === id ? "true" : "false");
+    $$(".tab").forEach(function (b) {
+      var on = b.getAttribute("data-go") === id;
+      b.setAttribute("aria-selected", on ? "true" : "false");
+      if (on) b.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
+    var s = SHEETS.filter(function (x) { return x.id === id; })[0];
+    $("#namebox").textContent = (s ? s.cell : "Sheet1") + "!A1";
     if (window.location.hash.slice(1) !== id) {
       try { history.replaceState(null, "", "#" + id); } catch (e) { /* sandboxed */ }
     }
@@ -802,9 +883,8 @@
 
   /* ---------- boot ---------- */
   document.addEventListener("DOMContentLoaded", function () {
-    $$(".rail nav button").forEach(function (b) {
-      b.onclick = function () { show(b.getAttribute("data-go")); };
-    });
+    buildTabs();
+
     $("#file").onchange = function () {
       var f = this.files && this.files[0];
       if (!f) return;
@@ -814,7 +894,18 @@
     };
     $("#pick").onclick = function () { $("#file").click(); };
     $("#sample").onclick = function () { loadAndShow(window.CAMSAMPLE, window.CAMSAMPLENAME); };
-    $("#tb-print").onclick = function () { window.print(); };
+
+    /* Ribbon mirrors the setup-sheet actions, always within reach. */
+    $("#pick-r").onclick = function () { $("#file").click(); };
+    $("#sample-r").onclick = function () { loadAndShow(window.CAMSAMPLE, window.CAMSAMPLENAME); };
+    $("#csv-r").onclick = function () { exportCSV(); };
+    $("#svg-r").onclick = function () { show("diagram"); setTimeout(saveSVG, 60); };
+    $("#print-r").onclick = function () { window.print(); };
+
+    $("#fb-heading").oninput = function () {
+      state.heading = this.value;
+      $("#titlebar-name").textContent = (this.value || "Untitled site") + " – CAM Tool Web";
+    };
 
     var dz = $("#dropzone");
     ["dragenter", "dragover"].forEach(function (e) {

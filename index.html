@@ -7,48 +7,65 @@
 <meta name="description" content="Browser-based crash analysis module for ODOT GCAT exports — summary sheets, relative severity index, proportions, crash tree and collision diagram.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 
-<div class="shell">
-  <aside class="rail">
-    <div class="brand">
-      <div class="mark">Ohio DOT &middot; Crash analysis</div>
-      <h1>CAM Tool Web</h1>
-      <p>The Crash Analysis Module, rebuilt to run in a browser. No Excel, no macros, no data connection &mdash; your file never leaves this device.</p>
-    </div>
-    <nav aria-label="Worksheets">
-      <div class="grp">Data</div>
-      <button data-go="setup" aria-current="true"><span class="no">01</span>Setup &amp; inputs</button>
-      <button data-go="data"><span class="no">10</span>Full crash data</button>
-      <div class="grp">Analysis</div>
-      <button data-go="summary"><span class="no">02</span>Quick summary</button>
-      <button data-go="analysis"><span class="no">03</span>Crash analysis</button>
-      <button data-go="unit1"><span class="no">04</span>Unit 1 analysis</button>
-      <button data-go="rsi"><span class="no">05</span>Relative severity index</button>
-      <button data-go="proportions"><span class="no">06</span>Proportions</button>
-      <button data-go="emphasis"><span class="no">07</span>Emphasis area</button>
-      <button data-go="tree"><span class="no">08</span>Crash tree</button>
-      <div class="grp">Diagram</div>
-      <button data-go="diagram"><span class="no">09</span>Collision diagram</button>
-    </nav>
-  </aside>
+<div class="xlapp">
 
-  <div class="main">
-    <header class="titleblock">
-      <div class="tb-title">
-        <div class="eyebrow">Site</div>
-        <h2 id="tb-head">Untitled site</h2>
+  <div class="titlebar">
+    <svg class="app-icon" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="4"/><path class="x" d="M9 9l14 14M23 9L9 23"/></svg>
+    <span class="app-name" id="titlebar-name">Untitled site &ndash; CAM Tool Web</span>
+    <span class="app-sub">Crash Analysis Module &middot; runs entirely in this browser, nothing uploaded</span>
+  </div>
+
+  <div class="ribbon" role="toolbar" aria-label="Toolbar">
+    <div class="ribbon-group">
+      <div class="ribbon-buttons">
+        <button class="rbtn" id="pick-r">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8.5V15a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 12V3m0 0L6.5 6.5M10 3l3.5 3.5"/></svg>
+          Open CSV
+        </button>
+        <button class="rbtn" id="sample-r">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="1.5"/><path d="M3 8h14M8 8v9"/></svg>
+          Sample data
+        </button>
       </div>
-      <div class="tb-field"><span>Years</span><strong id="tb-years">&ndash;</strong></div>
-      <div class="tb-field"><span>Crashes</span><strong id="tb-crashes">0</strong></div>
-      <div class="tb-field"><span>Fatal &amp; injury</span><strong id="tb-fi">0</strong></div>
-      <div class="tb-field"><span>Source file</span><strong id="tb-file" style="font-size:11px">&ndash;</strong></div>
-      <div class="tb-actions"><button class="btn" id="tb-print">Print</button></div>
-    </header>
+      <div class="ribbon-label">Import</div>
+    </div>
+    <div class="ribbon-sep"></div>
+    <div class="ribbon-group">
+      <div class="ribbon-buttons">
+        <button class="rbtn" id="csv-r">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0l-3.5-3.5M10 13l3.5-3.5M3.5 15.5h13"/></svg>
+          Export CSV
+        </button>
+        <button class="rbtn" id="svg-r">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0l-3.5-3.5M10 13l3.5-3.5M3.5 15.5h13"/></svg>
+          Diagram SVG
+        </button>
+        <button class="rbtn" id="print-r">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7V3.5h10V7M5 14.5h10V17H5zM3.5 7h13a1 1 0 0 1 1 1v5h-2M3.5 7a1 1 0 0 0-1 1v5h2"/></svg>
+          Print
+        </button>
+      </div>
+      <div class="ribbon-label">Share</div>
+    </div>
+    <div class="ribbon-sep"></div>
+    <div class="ribbon-group grow">
+      <div class="kpistrip" id="kpistrip"></div>
+      <div class="ribbon-label">This site</div>
+    </div>
+  </div>
 
+  <div class="formulabar">
+    <div class="namebox" id="namebox">Setup!A1</div>
+    <div class="fx" aria-hidden="true">f<sub>x</sub></div>
+    <input type="text" id="fb-heading" class="fb-input" placeholder="Type a site name &mdash; used as the diagram and report heading" autocomplete="off">
+  </div>
+
+  <main class="worksheet">
     <div class="sheet-area">
 
       <section class="sheet on" id="sheet-setup">
@@ -143,12 +160,29 @@
 
     </div>
 
-    <footer class="credits">
+    <p class="credits">
       Reproduces the analysis of ODOT&rsquo;s Crash Analysis Module (CAM) Tool workbook. Code lookups, the relative
       severity index cost table and the statewide proportions are taken from the workbook&rsquo;s own reference sheets
       (proportions data set: AASHTOWare Safety, 2021&ndash;2025, updated June 2026). This is an independent
       re-implementation and is not published by the Ohio Department of Transportation.
-    </footer>
+    </p>
+  </main>
+
+  <div class="tabbar">
+    <button class="tabnav" id="tabs-left" aria-label="Scroll tabs left" type="button">&#9664;</button>
+    <nav class="tabstrip" id="tabstrip" aria-label="Worksheets"></nav>
+    <button class="tabnav" id="tabs-right" aria-label="Scroll tabs right" type="button">&#9654;</button>
+    <div class="tab-insert" aria-hidden="true">+</div>
+  </div>
+  <div class="statusbar" id="statusbar">
+    <span class="sb-item" id="sb-ready">Ready</span>
+    <span class="sb-sep"></span>
+    <span class="sb-item">Crashes: <b id="sb-crashes">0</b></span>
+    <span class="sb-item">Fatal &amp; injury: <b id="sb-fi">0</b></span>
+    <span class="sb-item">Years: <b id="sb-years">&ndash;</b></span>
+    <span class="sb-item sb-file">File: <b id="sb-file">&ndash;</b></span>
+    <span class="sb-grow"></span>
+    <span class="sb-item sb-zoom">100%</span>
   </div>
 </div>
 
