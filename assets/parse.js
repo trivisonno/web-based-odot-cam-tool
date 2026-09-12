@@ -205,6 +205,7 @@
         logPoint: g("COUNTY_LOG_NBR"),
         lat: g("ODOT_LATITUDE_NBR"),
         lon: g("ODOT_LONGITUDE_NBR"),
+        fips: g("ODOT_FIPS_CD"),
         onRoad: onRoad,
         atRoad: atRoad,
         offset: g("ODOT_MILES_FROM_REF_NBR"),

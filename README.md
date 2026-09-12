@@ -35,6 +35,33 @@ Not carried over: the workbook's aerial-image import, Pathweb/roadview links,
 CRF table and the hidden HSIP submission sheets. Crash-DRAW is a separate ODOT tool
 and is out of scope.
 
+## Crash data cleanup
+
+A tenth sheet, **Crash Data Cleanup**, follows `HowToCompleteCrashDataCleanup.pdf`
+rather than the CAM Tool itself: it's ODOT's separate process for reporting bad crash
+data back for correction. Only the ten fields that PDF's Table 1 says are correctable
+are editable — Crash Type and ODOT Crash Location are dropdowns built from that PDF's
+Table 2 and Table 3 so only valid values can be entered; County Cd, NLFID, County True
+Log, On Road, At Road, ODOT Latitude, ODOT Longitude and ODOT FIPS Code are free text.
+Document Number is always shown and never editable, per the PDF's own rule that it's
+required on every submission.
+
+Editable fields render in blue (the common spreadsheet-modeling convention for
+hardcoded inputs); a field you actually change turns yellow, matching the PDF's own
+instruction to "highlight any changed fields." Editing follows filters like every
+other sheet, so switching years or maintenance authority doesn't discard your edits —
+they're tracked by row, not by what's currently on screen.
+
+**Download corrected file (.xlsx)** — on the sheet itself, or **Corrected XLSX** in
+the ribbon — writes a real `.xlsx` with the changed cells shaded yellow. `assets/xlsx.js`
+builds this by hand rather than through a library: the free build of SheetJS (the
+common browser-side `.xlsx` writer) can't set cell fill colors on write, which is
+the one thing this file needs to do. It packages a handful of OOXML parts with
+[JSZip](https://cdnjs.cloudflare.com/ajax/libs/jszip/) instead — no other dependency.
+This tool can't produce the macro-enabled CAM Tool workbook the PDF describes, so the
+`.xlsx` is a substitute serving the same purpose for the same
+[submission form](https://odot.formstack.com/forms/crashdatacleanup).
+
 ## Collision diagram
 
 `assets/diagram.js` ports three things from the workbook's `CollisionDiagram` VBA
@@ -83,6 +110,7 @@ assets/app.css      design tokens, light + dark
 assets/parse.js     GCAT CSV → normalized crash records
 assets/analysis.js  every worksheet's tabulation
 assets/diagram.js   collision diagram: zones, rotation, SVG symbols
+assets/xlsx.js      hand-written .xlsx writer (highlighted cells, no library)
 assets/app.js       UI controller
 assets/camref.js    generated reference tables
 assets/sample.js    bundled sample export

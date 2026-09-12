@@ -12,8 +12,43 @@
     site: { district: "STW", urban: "Yes", freeway: "No", siteType: "" },
     diagram: {
       labels: ["rowid"], scope: "all", ewStreet: "", nsStreet: "", control: "auto", selected: null
-    }
+    },
+    /* Crash data cleanup: keyed by row id -> { fieldKey: newValue }. Only
+       fields the user actually changed from the loaded value are kept. */
+    cleanupEdits: {}
   };
+
+  /* Fields ODOT's crash data cleanup process accepts, per HowToCompleteCrashDataCleanup.pdf
+     (Table 1). Order matches the PDF's own table. */
+  var CLEANUP_FIELDS = [
+    { key: "crashType", label: "Crash Type", type: "select", options: function () { return A.CRASH_TYPES; } },
+    { key: "county", label: "County Cd", type: "text", upper: true, maxlength: 3, width: 22 },
+    { key: "crashLocation", label: "ODOT Crash Location", type: "select", options: function () { return sortedByCode(window.CAMREF.crashLocation); } },
+    { key: "nlfid", label: "NLFID", type: "text", width: 30 },
+    { key: "logPoint", label: "County True Log", type: "number", step: "0.001", min: 0, max: 70, width: 18 },
+    { key: "onRoad", label: "On Road", type: "text", width: 26 },
+    { key: "atRoad", label: "At Road", type: "text", width: 26 },
+    { key: "lat", label: "ODOT Latitude", type: "number", step: "0.000001", min: 38, max: 42, width: 18 },
+    { key: "lon", label: "ODOT Longitude", type: "number", step: "0.000001", min: -85, max: -80, width: 18 },
+    { key: "fips", label: "ODOT FIPS Code", type: "text", width: 18 }
+  ];
+  function sortedByCode(obj) {
+    return Object.keys(obj).map(Number).sort(function (a, b) { return a - b; }).map(function (k) { return obj[String(k)]; });
+  }
+  function cleanupValue(r, key) {
+    var edits = state.cleanupEdits[r.i];
+    if (edits && Object.prototype.hasOwnProperty.call(edits, key)) return edits[key];
+    return r[key] === undefined || r[key] === null ? "" : r[key];
+  }
+  function cleanupIsEdited(r, key) {
+    var edits = state.cleanupEdits[r.i];
+    return !!(edits && Object.prototype.hasOwnProperty.call(edits, key));
+  }
+  function cleanupEditCount() {
+    var n = 0;
+    Object.keys(state.cleanupEdits).forEach(function (k) { n += Object.keys(state.cleanupEdits[k]).length; });
+    return n;
+  }
 
   /* ---------- helpers ---------- */
   function $(s, r) { return (r || document).querySelector(s); }
@@ -653,6 +688,121 @@
     $("#x-csv").onclick = exportCSV;
   }
 
+  /* ---------- crash data cleanup ---------- */
+  function cleanupControl(r, f) {
+    var val = cleanupValue(r, f.key);
+    var hl = cleanupIsEdited(r, f.key) ? " hl" : "";
+    var attrs = ' class="cell-in' + hl + '" data-row="' + r.i + '" data-field="' + f.key + '"';
+    if (f.type === "select") {
+      var opts = f.options();
+      return "<select" + attrs + ">" + opts.map(function (o) {
+        return '<option value="' + esc(o) + '"' + (o === val ? " selected" : "") + ">" + esc(o) + "</option>";
+      }).join("") + "</select>";
+    }
+    var extra = "";
+    if (f.type === "number") {
+      extra = ' inputmode="decimal" title="Valid range: ' + f.min + " to " + f.max + '"';
+    }
+    if (f.maxlength) extra += ' maxlength="' + f.maxlength + '"';
+    return '<input type="text"' + attrs + extra + ' value="' + esc(val) + '" autocomplete="off" spellcheck="false">';
+  }
+
+  function renderCleanup() {
+    var rows = state.records;
+    var n = cleanupEditCount();
+    var h =
+      '<p class="note">Only the fields ODOT&rsquo;s crash data cleanup accepts are editable here (see ' +
+      '<em>HowToCompleteCrashDataCleanup.pdf</em>, Table 1). <strong>Document Number</strong> is always required. ' +
+      "For each row, provide either <strong>NLFID</strong> and <strong>County True Log</strong>, or " +
+      "<strong>ODOT Latitude</strong> and <strong>ODOT Longitude</strong>.</p>" +
+      '<section class="plate"><div class="cleanup-legend">' +
+      '<span class="swatch"><span class="box input"></span>Editable field</span>' +
+      '<span class="swatch"><span class="box hl"></span>Changed from the loaded value</span>' +
+      "</div></section>" +
+
+      '<div class="toolbar" style="margin-top:12px">' +
+      '<button class="btn primary" id="cleanup-xlsx">Download corrected file (.xlsx)</button>' +
+      '<button class="btn" id="cleanup-reset"' + (n ? "" : " disabled") + '>Reset changes</button>' +
+      '<span class="pill"' + (n ? ' style="color:var(--hl-ink);border-color:var(--hl-ink)"' : "") + ">" +
+      n + " cell" + (n === 1 ? "" : "s") + " changed</span>" +
+      '<span class="pill">' + rows.length + " rows</span>" +
+      "</div>";
+
+    h += '<div class="plate"><div class="datatable"><table><thead><tr><th>Row</th><th>Document Number</th>' +
+      CLEANUP_FIELDS.map(function (f) { return "<th>" + esc(f.label) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    rows.forEach(function (r) {
+      h += '<tr><td class="readonly-cell">' + r.i + '</td><td class="doc-cell">' + esc(r.docNbr) + "</td>" +
+        CLEANUP_FIELDS.map(function (f) { return "<td>" + cleanupControl(r, f) + "</td>"; }).join("") + "</tr>";
+    });
+    h += "</tbody></table></div></div>";
+
+    h += '<p class="note">Submit the corrected file to the ODOT Safety Team: ' +
+      '<a href="https://odot.formstack.com/forms/crashdatacleanup" target="_blank" rel="noopener">odot.formstack.com/forms/crashdatacleanup</a>. ' +
+      "This tool cannot produce the macro-enabled CAM Tool workbook the instructions describe, so the download " +
+      "below is a plain .xlsx with the same idea: Document Number identifies the crash, and every field you " +
+      "change is shaded yellow.</p>";
+
+    $("#sheet-cleanup .body").innerHTML = h;
+    $$("#sheet-cleanup .cell-in").forEach(function (el) {
+      var handler = function () {
+        var i = +el.getAttribute("data-row"), key = el.getAttribute("data-field");
+        var r = rows.filter(function (x) { return x.i === i; })[0];
+        if (!r) return;
+        var f = CLEANUP_FIELDS.filter(function (x) { return x.key === key; })[0];
+        var val = el.value;
+        if (f.upper) { val = val.toUpperCase(); el.value = val; }
+        var original = r[key] === undefined || r[key] === null ? "" : String(r[key]);
+        var edits = state.cleanupEdits[i];
+        if (val === original) {
+          if (edits) { delete edits[key]; if (!Object.keys(edits).length) delete state.cleanupEdits[i]; }
+          el.classList.remove("hl");
+        } else {
+          if (!edits) edits = state.cleanupEdits[i] = {};
+          edits[key] = val;
+          el.classList.add("hl");
+        }
+        updateCleanupToolbar();
+      };
+      el.addEventListener(el.tagName === "SELECT" ? "change" : "input", handler);
+    });
+    $("#cleanup-xlsx").onclick = exportCleanupXlsx;
+    $("#cleanup-reset").onclick = function () {
+      state.cleanupEdits = {};
+      renderCleanup();
+      gridifyAll();
+    };
+  }
+  function updateCleanupToolbar() {
+    var n = cleanupEditCount();
+    var pill = $("#sheet-cleanup .toolbar .pill");
+    if (pill) {
+      pill.textContent = n + " cell" + (n === 1 ? "" : "s") + " changed";
+      pill.style.color = n ? "var(--hl-ink)" : "";
+      pill.style.borderColor = n ? "var(--hl-ink)" : "";
+    }
+    var reset = $("#cleanup-reset");
+    if (reset) reset.disabled = !n;
+  }
+  function exportCleanupXlsx() {
+    if (!window.CAMXlsx || !window.JSZip) { msg("The .xlsx writer didn't load — check your connection and reload.", "err"); return; }
+    var headers = ["Row", "Document Number"].concat(CLEANUP_FIELDS.map(function (f) { return f.label; }));
+    var widths = [6, 16].concat(CLEANUP_FIELDS.map(function (f) { return f.width || 20; }));
+    var rows = state.records.map(function (r) {
+      var row = [r.i, String(r.docNbr)];
+      CLEANUP_FIELDS.forEach(function (f) {
+        var v = cleanupValue(r, f.key);
+        var edited = cleanupIsEdited(r, f.key);
+        if (f.type === "number" && v !== "" && isFinite(parseFloat(v))) v = parseFloat(v);
+        row.push(edited ? { v: v, hl: true } : v);
+      });
+      return row;
+    });
+    var name = (state.heading || "crash-data").replace(/[^\w-]+/g, "_") + "_corrected.xlsx";
+    window.CAMXlsx.build({ sheetName: "Crash Data Cleanup", headers: headers, rows: rows, widths: widths })
+      .then(function (blob) { download(name, blob); })
+      .catch(function () { msg("Could not build the .xlsx file.", "err"); });
+  }
+
   /* ---------- export ---------- */
   function download(filename, data) {
     if (!window.claude || !window.claude.use) return fallbackDownload(filename, data);
@@ -732,7 +882,7 @@
 
     renderSetup(); renderSummary(); renderAnalysis(); renderUnit1();
     renderRSI(); renderProportions(); renderEmphasis(); renderTree();
-    renderDiagram(); renderData();
+    renderDiagram(); renderData(); renderCleanup();
     gridifyAll();
   }
   function kpi(label, value, cls) {
@@ -782,6 +932,7 @@
     catch (e) { msg(e.message, "err"); return; }
     state.all = recs;
     state.fileName = name || "";
+    state.cleanupEdits = {};
     var y = A.yearsOf(recs);
     state.filters = { yearFrom: y.min, yearTo: y.max, authority: "All" };
 
@@ -842,6 +993,7 @@
   var SHEETS = [
     { id: "setup", label: "Setup", group: "neutral", cell: "Setup" },
     { id: "data", label: "Full Crash Data", group: "neutral", cell: "Data" },
+    { id: "cleanup", label: "Crash Data Cleanup", group: "blue", cell: "Cleanup" },
     { id: "summary", label: "Quick Summary", group: "gold", cell: "QuickSumm" },
     { id: "analysis", label: "Crash Analysis", group: "gold", cell: "CrashAnl" },
     { id: "unit1", label: "Unit 1 Analysis", group: "gold", cell: "Unit1" },
@@ -901,6 +1053,7 @@
     $("#sample-r").onclick = function () { loadAndShow(window.CAMSAMPLE, window.CAMSAMPLENAME); };
     $("#csv-r").onclick = function () { exportCSV(); };
     $("#svg-r").onclick = function () { show("diagram"); setTimeout(saveSVG, 60); };
+    $("#xlsx-r").onclick = function () { exportCleanupXlsx(); };
     $("#print-r").onclick = function () { window.print(); };
 
     $("#fb-heading").oninput = function () {
