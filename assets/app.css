@@ -107,19 +107,21 @@
 
 * { box-sizing: border-box; }
 
+html, body { height: 100%; }
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
   font: 13px/1.45 var(--cell);
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 h1, h2, h3, h4 { font-family: var(--cell); font-weight: 700; text-wrap: balance; margin: 0; }
 
 a { color: var(--injury); }
 
-.xlapp { display: flex; flex-direction: column; min-height: 100vh; }
+.xlapp { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
 /* ---------- title bar ---------- */
 .titlebar {
@@ -180,7 +182,10 @@ a { color: var(--injury); }
 .fb-input:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ---------- worksheet body ---------- */
-.worksheet { flex: 1 1 auto; background: var(--paper); display: flex; flex-direction: column; min-width: 0; }
+.worksheet {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: var(--paper); display: flex; flex-direction: column; min-width: 0;
+}
 .sheet-area { padding: 16px clamp(14px, 2.4vw, 30px); flex: 1 1 auto; }
 .sheet { display: none; }
 .sheet.on { display: block; }
@@ -423,6 +428,9 @@ svg.cd .cd-lbl { font-family: var(--cell); font-size: 9.2px; fill: var(--ink-2);
 @media print {
   .titlebar, .ribbon, .formulabar, .tabbar, .statusbar, .toolbar, .controls, .credits { display: none !important; }
   .sheet { display: block !important; page-break-before: always; }
+  body, html { height: auto; overflow: visible; }
+  .xlapp { height: auto; overflow: visible; }
+  .worksheet { overflow: visible; }
   body { background: #fff; }
 }
 

@@ -878,7 +878,8 @@
     if (window.location.hash.slice(1) !== id) {
       try { history.replaceState(null, "", "#" + id); } catch (e) { /* sandboxed */ }
     }
-    window.scrollTo({ top: 0, behavior: "instant" in document.documentElement.style ? "instant" : "auto" });
+    var ws = $(".worksheet");
+    if (ws) ws.scrollTop = 0;
   }
 
   /* ---------- boot ---------- */
