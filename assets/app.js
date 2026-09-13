@@ -655,8 +655,12 @@
 
     var h =
       '<div class="controls">' +
-      '<label class="field"><span>Street running east–west</span><input type="text" id="d-ew" value="' + esc(d.ewStreet) + '"></label>' +
-      '<label class="field"><span>Street running north–south</span><input type="text" id="d-ns" value="' + esc(d.nsStreet) + '"></label>' +
+      '<label class="field"><span>Street running east–west</span>' +
+      '<span class="print-val" id="d-ew-print">' + esc(d.ewStreet || "–") + '</span>' +
+      '<input type="text" id="d-ew" value="' + esc(d.ewStreet) + '"></label>' +
+      '<label class="field"><span>Street running north–south</span>' +
+      '<span class="print-val" id="d-ns-print">' + esc(d.nsStreet || "–") + '</span>' +
+      '<input type="text" id="d-ns" value="' + esc(d.nsStreet) + '"></label>' +
       '<label class="field"><span>Crashes shown</span><select id="d-scope">' +
       '<option value="all">All crashes in file</option>' +
       '<option value="int">Intersection-related only</option>' +
@@ -702,8 +706,18 @@
     $("#d-scope").value = d.scope;
     $("#d-ctl").value = d.control;
 
-    $("#d-ew").oninput = function () { d.ewStreet = this.value; redrawSvg(); };
-    $("#d-ns").oninput = function () { d.nsStreet = this.value; redrawSvg(); };
+    $("#d-ew").oninput = function () {
+      d.ewStreet = this.value;
+      this.setAttribute("value", this.value);
+      $("#d-ew-print").textContent = this.value || "–";
+      redrawSvg();
+    };
+    $("#d-ns").oninput = function () {
+      d.nsStreet = this.value;
+      this.setAttribute("value", this.value);
+      $("#d-ns-print").textContent = this.value || "–";
+      redrawSvg();
+    };
     $("#d-scope").onchange = function () { d.scope = this.value; renderDiagram(); };
     $("#d-ctl").onchange = function () { d.control = this.value; renderDiagram(); };
     $$("[data-lbl]").forEach(function (cb) {

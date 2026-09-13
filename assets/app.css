@@ -437,8 +437,15 @@ select.cell-in { min-width: 70px; }
 
   /* Print the resolved value, not the live form control -- sidesteps every
      browser's own quirks around printing <input>/<select> current values. */
-  .cell-in { display: none !important; }
+  .cell-in, #d-ew, #d-ns { display: none !important; }
   .print-val { display: inline !important; }
+
+  /* Backgrounds are meaningful here (severity legend, changed-cell
+     highlight, proportions shading), not decoration -- browsers strip
+     background colors from print by default unless told otherwise. */
+  .sev-key b, .print-val.hl, .cell-good, .cell-warn, .cell-bad {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
