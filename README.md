@@ -63,7 +63,7 @@ reporting bad crash data back for correction — which asks for the CAM Tool wit
 changed fields highlighted. Of the ~85 editable columns here, that process only
 accepts ten (Crash Type, County Cd, ODOT Crash Location, NLFID, County True Log, On
 Road, At Road, ODOT Latitude, ODOT Longitude, ODOT FIPS Code); a note under the table
-names them. **Download highlighted .xlsx** — on the sheet, or in the ribbon — writes
+names them. **Download highlighted .xlsx**, on the sheet itself, writes
 a real `.xlsx` of the full table with every changed cell shaded yellow, matching that
 instruction. `assets/xlsx.js` builds this by hand rather than through a library: the
 free build of SheetJS (the common browser-side `.xlsx` writer) can't set cell fill
@@ -94,6 +94,25 @@ When a zone fills up, the extras go to the **Crash Overflow Zone**, as in the CA
 Controls: street names, crash scope, traffic control drawn, and the same
 diagram-label checkboxes the CAM toolbar offers. Click a symbol for the crash behind
 it, including which symbol, zone and rotation it was assigned.
+
+**Known gap, inherited from the workbook:** the zone/rotation tables for turning
+crashes (letters `C`/`D` angle, `M` left turn, `N`/`O` right turn) only cover pairs of
+units approaching from *opposite* legs — North↔South, East↔West, or their diagonal
+equivalents (NE↔SW, NW↔SE). A turning conflict between units on *adjacent* legs (for
+example, one approaching from the north and the other from the west) matches none of
+those table entries and falls through to the same zone-11 default used for
+unclassified angle crashes, rather than the quadrant it geometrically belongs in.
+This isn't specific to the port: the original `CollisionDiagram` VBA's `ORotate`/
+`NRotate`/etc. labels have the identical opposite-leg-only conditions and the same
+`Else` fallback, so the workbook has always placed these crashes the same way. A
+concrete example from the bundled sample: Document 20252197125 (unit 1 North→West
+right turn, unit 2 West→North left turn) is crash type "Right Turn" with differing
+exit directions, so it resolves to letter `O`; `O_TABLE` has no North/West entry, so
+it lands in zone 11 at 0° instead of the northwest quadrant (zone 9) the movement
+suggests. Fixing this would mean extending `C_TABLE`/`M_TABLE`/`N_TABLE`/`O_TABLE` in
+`assets/diagram.js` with the four adjacent-leg combinations (and their reverses) —
+not done here, so as not to diverge from the workbook's own placement behavior
+without being asked to.
 
 ## Reference data
 

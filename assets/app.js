@@ -281,7 +281,7 @@
       stat("EPDO index", hd.epdo.toFixed(2)) +
       "</div>" +
 
-      '<p class="note">Type the site name into the formula bar above (cell A1) &mdash; it becomes the diagram and report heading.</p>' +
+      '<p class="note">Type the site or intersection name into the field at the top of the page &mdash; it becomes the diagram and report heading.</p>' +
 
       '<div class="controls">' +
       '<label class="field"><span>Year from</span><select id="f-yfrom">' + yopts + "</select></label>" +
@@ -1106,8 +1106,6 @@
       b.setAttribute("aria-selected", on ? "true" : "false");
       if (on) b.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
-    var s = SHEETS.filter(function (x) { return x.id === id; })[0];
-    $("#namebox").textContent = (s ? s.cell : "Sheet1") + "!A1";
     if (window.location.hash.slice(1) !== id) {
       try { history.replaceState(null, "", "#" + id); } catch (e) { /* sandboxed */ }
     }
@@ -1130,12 +1128,7 @@
     $("#sample").onclick = function () { loadAndShow(window.CAMSAMPLE, window.CAMSAMPLENAME); };
 
     /* Ribbon mirrors the setup-sheet actions, always within reach. */
-    $("#pick-r").onclick = function () { $("#file").click(); };
-    $("#sample-r").onclick = function () { loadAndShow(window.CAMSAMPLE, window.CAMSAMPLENAME); };
-    $("#csv-r").onclick = function () { exportCSV(); };
-    $("#svg-r").onclick = function () { show("diagram"); setTimeout(saveSVG, 60); };
-    $("#xlsx-r").onclick = function () { exportHighlightedXlsx(); };
-    $("#print-r").onclick = function () { window.print(); };
+    $("#print-btn").onclick = function () { window.print(); };
 
     $("#fb-heading").oninput = function () {
       state.heading = this.value;
