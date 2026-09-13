@@ -407,7 +407,8 @@ select.cell-in { min-width: 70px; }
 
 @media print {
   .titlebar, .tabbar, .statusbar, .toolbar, .controls { display: none !important; }
-  .sheet { display: block !important; page-break-before: always; }
+  .sheet { display: block !important; }
+  .sheet + .sheet { page-break-before: always; }
   body, html { height: auto; overflow: visible; }
   .xlapp { height: auto; overflow: visible; }
   .worksheet { overflow: visible; }
