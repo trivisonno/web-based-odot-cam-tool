@@ -141,30 +141,15 @@ a { color: var(--injury); }
 /* ---------- title bar ---------- */
 .titlebar {
   background: var(--accent-dk); color: #fff; display: flex; align-items: center; gap: 9px;
-  padding: 6px 14px; font-family: var(--ui); flex-wrap: wrap; row-gap: 2px;
+  padding: 6px 14px; font-family: var(--ui); flex-wrap: wrap; row-gap: 6px;
 }
 .app-icon { width: 18px; height: 18px; flex: none; }
 .app-icon rect { fill: #fff; }
 .app-icon .x { stroke: var(--accent-dk); stroke-width: 3; stroke-linecap: round; fill: none; }
 .app-name { font-size: 13px; font-weight: 600; }
 .app-sub { font-size: 11px; opacity: .78; margin-left: 4px; }
-
-/* ---------- header bar: site name + summary + print ---------- */
-.headerbar {
-  background: var(--sheet); border-bottom: 1px solid var(--rule);
-  display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;
-  padding: 10px 14px; font-family: var(--ui);
-}
-.heading-field { min-width: 240px; flex: 1 1 240px; }
-.heading-field input { width: 100%; }
-.kpistrip { display: flex; gap: 14px; flex-wrap: wrap; }
-.kpi { display: flex; flex-direction: column; min-width: 60px; }
-.kpi span {
-  font-family: var(--ui); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
-}
-.kpi strong { font: 700 17px/1.2 var(--cell); font-variant-numeric: tabular-nums; }
-.kpi.fatal strong { color: var(--fatal); }
-.kpi.serious strong { color: var(--serious); }
+.titlebar .btn { margin-left: auto; background: transparent; border-color: rgba(255, 255, 255, .5); color: #fff; }
+.titlebar .btn:hover { background: rgba(255, 255, 255, .12); border-color: #fff; }
 
 /* ---------- worksheet body ---------- */
 .worksheet {
@@ -421,7 +406,7 @@ select.cell-in { min-width: 70px; }
 }
 
 @media print {
-  .titlebar, .headerbar, .tabbar, .statusbar, .toolbar, .controls { display: none !important; }
+  .titlebar, .tabbar, .statusbar, .toolbar, .controls { display: none !important; }
   .sheet { display: block !important; page-break-before: always; }
   body, html { height: auto; overflow: visible; }
   .xlapp { height: auto; overflow: visible; }

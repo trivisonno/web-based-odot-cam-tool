@@ -270,6 +270,12 @@
     for (var y = yrs.min; y <= yrs.max; y++) yopts += '<option value="' + y + '">' + y + "</option>";
 
     host.innerHTML =
+      '<div class="controls">' +
+      '<label class="field" style="grid-column:1/-1"><span>Site / intersection name</span>' +
+      '<input type="text" id="f-heading" value="' + esc(state.heading) +
+      '" placeholder="e.g. Denison Ave at W 65th St" autocomplete="off"></label>' +
+      "</div>" +
+
       '<div class="stats">' +
       stat("Crashes", num(hd.crashes)) +
       stat("Years analysed", yrs.min === yrs.max ? String(yrs.min) : yrs.min + "–" + yrs.max) +
@@ -280,8 +286,6 @@
       stat("Percent injury", pct(hd.pctInjury)) +
       stat("EPDO index", hd.epdo.toFixed(2)) +
       "</div>" +
-
-      '<p class="note">Type the site or intersection name into the field at the top of the page &mdash; it becomes the diagram and report heading.</p>' +
 
       '<div class="controls">' +
       '<label class="field"><span>Year from</span><select id="f-yfrom">' + yopts + "</select></label>" +
@@ -312,6 +316,10 @@
     $("#f-freeway").value = state.site.freeway;
     $("#f-site").value = state.site.siteType;
 
+    $("#f-heading").oninput = function () {
+      state.heading = this.value;
+      $("#titlebar-name").textContent = (this.value || "Untitled site") + " – CAM Tool Web";
+    };
     $("#f-yfrom").onchange = function () { state.filters.yearFrom = +this.value; refresh(); };
     $("#f-yto").onchange = function () { state.filters.yearTo = +this.value; refresh(); };
     $("#f-auth").onchange = function () { state.filters.authority = this.value; refresh(); };
@@ -950,14 +958,6 @@
     var yearsTxt = hd.years.min === hd.years.max ? String(hd.years.min) : hd.years.min + "–" + hd.years.max;
 
     $("#titlebar-name").textContent = (state.heading || "Untitled site") + " – CAM Tool Web";
-    $("#fb-heading").value = state.heading || "";
-    $("#kpistrip").innerHTML =
-      kpi("Crashes", num(hd.crashes)) +
-      kpi("Years", yearsTxt) +
-      kpi("Fatal & inj.", num(hd.fiCrashes)) +
-      kpi("Fatalities", num(hd.fatalities), "fatal") +
-      kpi("Ser. inj.", num(hd.serious), "serious") +
-      kpi("EPDO", hd.epdo.toFixed(2));
     $("#sb-crashes").textContent = num(hd.crashes);
     $("#sb-fi").textContent = num(hd.fiCrashes);
     $("#sb-years").textContent = yearsTxt;
@@ -967,9 +967,6 @@
     renderRSI(); renderProportions(); renderEmphasis(); renderTree();
     renderDiagram(); renderData();
     gridifyAll();
-  }
-  function kpi(label, value, cls) {
-    return '<div class="kpi ' + (cls || "") + '"><span>' + esc(label) + "</span><strong>" + esc(value) + "</strong></div>";
   }
 
   /* ---------- spreadsheet chrome: column letters + row numbers ---------- */
@@ -1126,14 +1123,7 @@
     };
     $("#pick").onclick = function () { $("#file").click(); };
     $("#sample").onclick = function () { loadAndShow(window.CAMSAMPLE, window.CAMSAMPLENAME); };
-
-    /* Ribbon mirrors the setup-sheet actions, always within reach. */
     $("#print-btn").onclick = function () { window.print(); };
-
-    $("#fb-heading").oninput = function () {
-      state.heading = this.value;
-      $("#titlebar-name").textContent = (this.value || "Untitled site") + " – CAM Tool Web";
-    };
 
     var dz = $("#dropzone");
     ["dragenter", "dragover"].forEach(function (e) {
