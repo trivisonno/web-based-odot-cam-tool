@@ -12,42 +12,160 @@
     site: { district: "STW", urban: "Yes", freeway: "No", siteType: "" },
     diagram: {
       labels: ["rowid"], scope: "all", ewStreet: "", nsStreet: "", control: "auto", selected: null
-    },
-    /* Crash data cleanup: keyed by row id -> { fieldKey: newValue }. Only
-       fields the user actually changed from the loaded value are kept. */
-    cleanupEdits: {}
+    }
   };
 
-  /* Fields ODOT's crash data cleanup process accepts, per HowToCompleteCrashDataCleanup.pdf
-     (Table 1). Order matches the PDF's own table. */
-  var CLEANUP_FIELDS = [
-    { key: "crashType", label: "Crash Type", type: "select", options: function () { return A.CRASH_TYPES; } },
-    { key: "county", label: "County Cd", type: "text", upper: true, maxlength: 3, width: 22 },
-    { key: "crashLocation", label: "ODOT Crash Location", type: "select", options: function () { return sortedByCode(window.CAMREF.crashLocation); } },
-    { key: "nlfid", label: "NLFID", type: "text", width: 30 },
-    { key: "logPoint", label: "County True Log", type: "number", step: "0.001", min: 0, max: 70, width: 18 },
-    { key: "onRoad", label: "On Road", type: "text", width: 26 },
-    { key: "atRoad", label: "At Road", type: "text", width: 26 },
-    { key: "lat", label: "ODOT Latitude", type: "number", step: "0.000001", min: 38, max: 42, width: 18 },
-    { key: "lon", label: "ODOT Longitude", type: "number", step: "0.000001", min: -85, max: -80, width: 18 },
-    { key: "fips", label: "ODOT FIPS Code", type: "text", width: 18 }
-  ];
+  /* ---------- editable field registry ----------
+     Every field the parser decodes is editable here; a "u1."/"u2." prefixed
+     key reaches into that unit's sub-object. Edits mutate the live record
+     directly (the same object referenced by state.all/state.records), so
+     every other sheet and the collision diagram pick them up on the next
+     render — there is no separate "corrected" copy of the data. */
   function sortedByCode(obj) {
     return Object.keys(obj).map(Number).sort(function (a, b) { return a - b; }).map(function (k) { return obj[String(k)]; });
   }
-  function cleanupValue(r, key) {
-    var edits = state.cleanupEdits[r.i];
-    if (edits && Object.prototype.hasOwnProperty.call(edits, key)) return edits[key];
-    return r[key] === undefined || r[key] === null ? "" : r[key];
+  function getField(r, key) {
+    var i = key.indexOf(".");
+    var v = i < 0 ? r[key] : r[key.slice(0, i)][key.slice(i + 1)];
+    return v === undefined || v === null ? "" : v;
   }
-  function cleanupIsEdited(r, key) {
-    var edits = state.cleanupEdits[r.i];
-    return !!(edits && Object.prototype.hasOwnProperty.call(edits, key));
+  function setField(r, key, val) {
+    var i = key.indexOf(".");
+    if (i < 0) r[key] = val; else r[key.slice(0, i)][key.slice(i + 1)] = val;
   }
-  function cleanupEditCount() {
+  /* Fields whose text drives another field's code; kept in sync after an edit. */
+  function applySideEffects(r, key) {
+    if (key === "severity") {
+      var m = /\((\d)\)/.exec(r.severity);
+      r.severityCode = m ? +m[1] : 0;
+      r.fi = r.severityCode >= 1 && r.severityCode <= 4 ? "FI" : "PDO";
+      r.injuryCrash = r.fi === "FI";
+    } else if (key === "crashType") {
+      var idx = A.CRASH_TYPES.indexOf(r.crashType);
+      r.crashTypeCode = idx < 0 ? undefined : idx;
+      r.mvsv = P.MV_TYPES[r.crashTypeCode] ? "MV" : "SV";
+    } else if (key === "monthName") {
+      var mi = P.MONTHS.indexOf(r.monthName);
+      r.month = mi < 0 ? 0 : mi + 1;
+    } else if (key === "u1.unitSpeed") {
+      r.u1.speedBand = P.speedBand(r.u1.unitSpeed);
+    } else if (key === "u2.unitSpeed") {
+      r.u2.speedBand = P.speedBand(r.u2.unitSpeed);
+    }
+  }
+  function yesNo() { return ["Yes", "No"]; }
+  var UNIT_FIELDS = [
+    { key: "dirFrom", label: "Direction From", type: "select", options: function () { return sortedByCode(window.CAMREF.dirFrom); } },
+    { key: "dirTo", label: "Direction To", type: "select", options: function () { return sortedByCode(window.CAMREF.dirTo); } },
+    { key: "turn", label: "Turn", type: "select", options: function () { return Object.values(window.CAMREF.turn); } },
+    { key: "trafficControl", label: "Traffic Control", type: "select", options: function () { return sortedByCode(window.CAMREF.trafficControl); } },
+    { key: "unitType", label: "Type of Unit", type: "select", options: function () { return sortedByCode(window.CAMREF.unitType); } },
+    { key: "specialFunction", label: "Special Function", type: "select", options: function () { return sortedByCode(window.CAMREF.specialFunction); } },
+    { key: "precrash", label: "Pre-Crash Action", type: "select", options: function () { return sortedByCode(window.CAMREF.precrashAction); } },
+    { key: "contrib", label: "Contributing Circumstance", type: "select", options: function () { return sortedByCode(window.CAMREF.contribCirc); } },
+    { key: "objectStruck", label: "Object Struck", type: "select", options: function () { return sortedByCode(window.CAMREF.objectStruck); } },
+    { key: "nonMotorist", label: "Non-Motorist Location", type: "select", options: function () { return sortedByCode(window.CAMREF.nonMotoristLoc); } },
+    { key: "distractedBy", label: "Distracted By", type: "select", options: function () { return sortedByCode(window.CAMREF.distractedBy); } },
+    { key: "gender", label: "Gender", type: "select", options: function () { return Object.values(window.CAMREF.gender); } },
+    { key: "age", label: "Age", type: "text", width: 8 },
+    { key: "postedSpeed", label: "Posted Speed", type: "text", width: 10 },
+    { key: "unitSpeed", label: "Estimated Speed", type: "text", width: 10 }
+  ];
+  function unitColumns(unit, label) {
+    return UNIT_FIELDS.map(function (f) {
+      return {
+        key: unit + "." + f.key, label: label + " " + f.label, type: f.type,
+        options: f.options, width: f.width || 16
+      };
+    });
+  }
+  var FULL_COLUMNS = [
+    { key: "i", label: "Row", type: "readonly", width: 6 },
+    { key: "docNbr", label: "Document Number", type: "readonly", bold: true, width: 16 },
+    { key: "localReport", label: "Local Report Number", type: "text", width: 18 },
+    { key: "year", label: "Year", type: "text", width: 8 },
+    { key: "monthName", label: "Month", type: "select", options: function () { return P.MONTHS; }, width: 12 },
+    { key: "date", label: "Crash Date", type: "text", width: 14 },
+    { key: "hour", label: "Hour", type: "text", width: 6 },
+    { key: "dayOfWeek", label: "Day in Week", type: "select", options: function () { return sortedByCode(window.CAMREF.dayOfWeek); }, width: 14 },
+    { key: "severity", label: "Severity", type: "select", options: function () { return A.SEVERITIES; }, width: 22 },
+    { key: "crashType", label: "Crash Type", type: "select", options: function () { return A.CRASH_TYPES; }, width: 18 },
+    { key: "fatal", label: "Fatalities", type: "text", width: 8 },
+    { key: "serious", label: "Serious Injuries", type: "text", width: 8 },
+    { key: "minor", label: "Non-Serious Injuries", type: "text", width: 8 },
+    { key: "possible", label: "Possible Injuries", type: "text", width: 8 },
+    { key: "noInjury", label: "No Injuries", type: "text", width: 8 },
+    { key: "unrestrained", label: "Unrestrained Occupants", type: "text", width: 8 },
+    { key: "units", label: "Number of Units", type: "text", width: 8 },
+    { key: "district", label: "ODOT District", type: "text", width: 8 },
+    { key: "county", label: "County Cd", type: "text", upper: true, maxlength: 3, width: 10 },
+    { key: "areaCode", label: "Area Code", type: "text", width: 12 },
+    { key: "freeway", label: "Freeway", type: "select", options: yesNo, width: 8 },
+    { key: "interstate", label: "Interstate", type: "select", options: yesNo, width: 8 },
+    { key: "funcClass", label: "Functional Class", type: "select", options: function () { return sortedByCode(window.CAMREF.funcClass); }, width: 22 },
+    { key: "facilityType", label: "Facility Type", type: "select", options: function () { return sortedByCode(window.CAMREF.facilityType); }, width: 18 },
+    { key: "crashLocation", label: "ODOT Crash Location", type: "select", options: function () { return sortedByCode(window.CAMREF.crashLocation); }, width: 22 },
+    { key: "intersectionRelated", label: "Intersection Related", type: "select", options: yesNo, width: 8 },
+    { key: "roadwayDeparture", label: "Roadway Departure", type: "select", options: yesNo, width: 8 },
+    { key: "alcohol", label: "Alcohol Related", type: "select", options: yesNo, width: 8 },
+    { key: "drug", label: "Drug Related", type: "select", options: yesNo, width: 8 },
+    { key: "marijuana", label: "Marijuana Related", type: "select", options: yesNo, width: 8 },
+    { key: "schoolZone", label: "School Zone Related", type: "select", options: yesNo, width: 8 },
+    { key: "motorcycle", label: "Motorcycle Involved", type: "select", options: yesNo, width: 8 },
+    { key: "speedRelated", label: "Speed Related", type: "select", options: yesNo, width: 8 },
+    { key: "seniorDriver", label: "Senior Driver (65+)", type: "select", options: yesNo, width: 8 },
+    { key: "youngDriver", label: "Young Driver (15-25)", type: "select", options: yesNo, width: 8 },
+    { key: "workZone", label: "Work Zone Related", type: "select", options: yesNo, width: 8 },
+    { key: "distracted", label: "Distracted Driver", type: "select", options: yesNo, width: 8 },
+    { key: "weather", label: "Weather Condition", type: "select", options: function () { return sortedByCode(window.CAMREF.weather); }, width: 20 },
+    { key: "roadCond", label: "Road Condition", type: "select", options: function () { return sortedByCode(window.CAMREF.roadCond); }, width: 20 },
+    { key: "lightCond", label: "Light Condition", type: "select", options: function () { return sortedByCode(window.CAMREF.lightCond); }, width: 22 },
+    { key: "roadContour", label: "Road Contour", type: "select", options: function () { return sortedByCode(window.CAMREF.roadContour); }, width: 14 },
+    { key: "divided", label: "Divided Hwy", type: "select", options: function () { return ["Divided", "Undivided", "Unknown"]; }, width: 10 },
+    { key: "lanes", label: "Number of Lanes", type: "text", width: 8 },
+    { key: "maintAuthority", label: "Maintenance Authority", type: "select", options: function () { return sortedByCode(window.CAMREF.maintAuthority); }, width: 22 },
+    { key: "nlfid", label: "NLFID", type: "text", width: 22 },
+    { key: "logPoint", label: "County True Log", type: "text", width: 10 },
+    { key: "lat", label: "ODOT Latitude", type: "text", width: 12 },
+    { key: "lon", label: "ODOT Longitude", type: "text", width: 12 },
+    { key: "fips", label: "ODOT FIPS Code", type: "text", width: 10 },
+    { key: "onRoad", label: "On Road", type: "text", width: 20 },
+    { key: "atRoad", label: "At Road", type: "text", width: 20 },
+    { key: "offset", label: "Miles from Reference", type: "text", width: 10 },
+    { key: "offsetDir", label: "Direction from Reference", type: "select", options: function () { return sortedByCode(window.CAMREF.dirFrom); }, width: 12 },
+    { key: "intersectionId", label: "Intersection ID", type: "text", width: 22 }
+  ].concat(unitColumns("u1", "U1"), unitColumns("u2", "U2"));
+  /* The subset ODOT's own crash data cleanup process accepts (see
+     HowToCompleteCrashDataCleanup.pdf, Table 1) — flagged for the note
+     under the table, not a separate editable set. */
+  var ODOT_CLEANUP_KEYS = ["crashType", "county", "crashLocation", "nlfid", "logPoint", "onRoad", "atRoad", "lat", "lon", "fips"];
+
+  function isEdited(r, key) { return !!(r._edited && r._edited[key]); }
+  function markEdited(r, key, before) {
+    if (!r._orig) r._orig = {};
+    if (!(key in r._orig)) r._orig[key] = before;
+    if (!r._edited) r._edited = {};
+    if (String(getField(r, key)) === String(r._orig[key])) {
+      delete r._edited[key];
+      if (!Object.keys(r._edited).length) delete r._edited;
+    } else {
+      r._edited[key] = true;
+    }
+  }
+  function editCount() {
     var n = 0;
-    Object.keys(state.cleanupEdits).forEach(function (k) { n += Object.keys(state.cleanupEdits[k]).length; });
+    state.all.forEach(function (r) { if (r._edited) n += Object.keys(r._edited).length; });
     return n;
+  }
+  function resetEdits() {
+    state.all.forEach(function (r) {
+      if (!r._orig) return;
+      Object.keys(r._orig).forEach(function (key) {
+        setField(r, key, r._orig[key]);
+        applySideEffects(r, key);
+      });
+      delete r._orig; delete r._edited;
+    });
   }
 
   /* ---------- helpers ---------- */
@@ -646,159 +764,124 @@
   }
 
   /* ---------- full crash data ---------- */
-  var COLS = [
-    ["Row", function (r) { return r.i; }], ["Document", function (r) { return r.docNbr; }],
-    ["Year", function (r) { return r.year; }], ["Date", function (r) { return r.date; }],
-    ["Local report", function (r) { return r.localReport; }],
-    ["Severity", function (r) { return r.severity; }], ["Crash type", function (r) { return r.crashType; }],
-    ["On road", function (r) { return r.onRoad; }], ["At road", function (r) { return r.atRoad; }],
-    ["Location", function (r) { return r.crashLocation; }],
-    ["Int. rel.", function (r) { return r.intersectionRelated; }],
-    ["Rdwy dep.", function (r) { return r.roadwayDeparture; }],
-    ["Units", function (r) { return r.units; }],
-    ["Fatal", function (r) { return r.fatal; }], ["Serious", function (r) { return r.serious; }],
-    ["Minor", function (r) { return r.minor; }], ["Possible", function (r) { return r.possible; }],
-    ["Light", function (r) { return r.lightCond; }], ["Road", function (r) { return r.roadCond; }],
-    ["Weather", function (r) { return r.weather; }],
-    ["U1 type", function (r) { return r.u1.unitType; }],
-    ["U1 from", function (r) { return r.u1.dirFrom; }], ["U1 to", function (r) { return r.u1.dirTo; }],
-    ["U1 control", function (r) { return r.u1.trafficControl; }],
-    ["U1 factor", function (r) { return r.u1.contrib; }],
-    ["U1 object", function (r) { return r.u1.objectStruck; }],
-    ["Authority", function (r) { return r.maintAuthority; }]
-  ];
-
-  function renderData() {
-    var rows = state.records;
-    var h = '<div class="toolbar"><button class="btn" id="x-csv">Download analysed CSV</button>' +
-      '<span class="pill">' + rows.length + " rows</span></div>";
-    h += '<div class="plate"><div class="datatable"><table><thead><tr><th>OH-1</th>' +
-      COLS.map(function (c) { return "<th>" + esc(c[0]) + "</th>"; }).join("") + "</tr></thead><tbody>";
-    rows.forEach(function (r) {
-      h += "<tr><td>" + (r.reportLink && r.year > 2010
-        ? '<a href="' + esc(r.reportLink) + '" target="_blank" rel="noopener">Report</a>'
-        : '<span style="color:var(--ink-3)">–</span>') + "</td>" +
-        COLS.map(function (c) {
-          var v = c[1](r);
-          return "<td>" + esc(v === "" || v === undefined || v === null ? "–" : v) + "</td>";
-        }).join("") + "</tr>";
-    });
-    h += "</tbody></table></div></div>";
-    $("#sheet-data .body").innerHTML = h;
-    $("#x-csv").onclick = exportCSV;
-  }
-
-  /* ---------- crash data cleanup ---------- */
-  function cleanupControl(r, f) {
-    var val = cleanupValue(r, f.key);
-    var hl = cleanupIsEdited(r, f.key) ? " hl" : "";
+  /* ---------- full crash data: every field, every field editable ---------- */
+  function fieldControl(r, f, opts, selWidth) {
+    if (f.type === "readonly") {
+      return '<span class="readonly-cell' + (f.bold ? " doc-cell" : "") + '">' + esc(getField(r, f.key)) + "</span>";
+    }
+    var val = getField(r, f.key);
+    var hl = isEdited(r, f.key) ? " hl" : "";
     var attrs = ' class="cell-in' + hl + '" data-row="' + r.i + '" data-field="' + f.key + '"';
     if (f.type === "select") {
-      var opts = f.options();
-      return "<select" + attrs + ">" + opts.map(function (o) {
+      if (val !== "" && opts.indexOf(val) < 0) opts = opts.concat([val]);
+      return '<select' + attrs + ' style="width:' + selWidth + 'px">' + opts.map(function (o) {
         return '<option value="' + esc(o) + '"' + (o === val ? " selected" : "") + ">" + esc(o) + "</option>";
       }).join("") + "</select>";
     }
-    var extra = "";
-    if (f.type === "number") {
-      extra = ' inputmode="decimal" title="Valid range: ' + f.min + " to " + f.max + '"';
-    }
-    if (f.maxlength) extra += ' maxlength="' + f.maxlength + '"';
+    var extra = f.maxlength ? ' maxlength="' + f.maxlength + '"' : "";
     return '<input type="text"' + attrs + extra + ' value="' + esc(val) + '" autocomplete="off" spellcheck="false">';
   }
 
-  function renderCleanup() {
+  function renderData() {
     var rows = state.records;
-    var n = cleanupEditCount();
+    var byId = new Map(rows.map(function (r) { return [r.i, r]; }));
+    var n = editCount();
+    var host = $("#sheet-data .body");
+    var scrollBox = $(".datatable", host);
+    var scrollTop = scrollBox ? scrollBox.scrollTop : 0, scrollLeft = scrollBox ? scrollBox.scrollLeft : 0;
+
+    /* Resolve each select column's option list (and a rough pixel width from
+       its longest label) once per render, not once per cell. */
+    var optsCache = {}, widthCache = {};
+    FULL_COLUMNS.forEach(function (f) {
+      if (f.type !== "select") return;
+      var opts = f.options();
+      optsCache[f.key] = opts;
+      var maxLen = opts.reduce(function (m, o) { return Math.max(m, String(o).length); }, 4);
+      widthCache[f.key] = Math.max(70, Math.min(230, maxLen * 6.5 + 26));
+    });
+
     var h =
-      '<p class="note">Only the fields ODOT&rsquo;s crash data cleanup accepts are editable here (see ' +
-      '<em>HowToCompleteCrashDataCleanup.pdf</em>, Table 1). <strong>Document Number</strong> is always required. ' +
-      "For each row, provide either <strong>NLFID</strong> and <strong>County True Log</strong>, or " +
-      "<strong>ODOT Latitude</strong> and <strong>ODOT Longitude</strong>.</p>" +
-      '<section class="plate"><div class="cleanup-legend">' +
+      '<section class="plate"><div class="edit-legend">' +
       '<span class="swatch"><span class="box input"></span>Editable field</span>' +
       '<span class="swatch"><span class="box hl"></span>Changed from the loaded value</span>' +
       "</div></section>" +
-
       '<div class="toolbar" style="margin-top:12px">' +
-      '<button class="btn primary" id="cleanup-xlsx">Download corrected file (.xlsx)</button>' +
-      '<button class="btn" id="cleanup-reset"' + (n ? "" : " disabled") + '>Reset changes</button>' +
+      '<button class="btn" id="x-csv">Download CSV</button>' +
+      '<button class="btn primary" id="x-xlsx">Download highlighted .xlsx</button>' +
+      '<button class="btn" id="x-reset"' + (n ? "" : " disabled") + '>Reset changes</button>' +
       '<span class="pill"' + (n ? ' style="color:var(--hl-ink);border-color:var(--hl-ink)"' : "") + ">" +
       n + " cell" + (n === 1 ? "" : "s") + " changed</span>" +
       '<span class="pill">' + rows.length + " rows</span>" +
       "</div>";
 
-    h += '<div class="plate"><div class="datatable"><table><thead><tr><th>Row</th><th>Document Number</th>' +
-      CLEANUP_FIELDS.map(function (f) { return "<th>" + esc(f.label) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    h += '<div class="plate"><div class="datatable"><table><thead><tr><th>OH-1</th>' +
+      FULL_COLUMNS.map(function (f) { return "<th>" + esc(f.label) + "</th>"; }).join("") + "</tr></thead><tbody>";
     rows.forEach(function (r) {
-      h += '<tr><td class="readonly-cell">' + r.i + '</td><td class="doc-cell">' + esc(r.docNbr) + "</td>" +
-        CLEANUP_FIELDS.map(function (f) { return "<td>" + cleanupControl(r, f) + "</td>"; }).join("") + "</tr>";
+      h += "<tr><td>" + (r.reportLink && r.year > 2010
+        ? '<a href="' + esc(r.reportLink) + '" target="_blank" rel="noopener">Report</a>'
+        : '<span style="color:var(--ink-3)">–</span>') + "</td>" +
+        FULL_COLUMNS.map(function (f) {
+          return "<td>" + fieldControl(r, f, optsCache[f.key], widthCache[f.key]) + "</td>";
+        }).join("") + "</tr>";
     });
     h += "</tbody></table></div></div>";
 
-    h += '<p class="note">Submit the corrected file to the ODOT Safety Team: ' +
-      '<a href="https://odot.formstack.com/forms/crashdatacleanup" target="_blank" rel="noopener">odot.formstack.com/forms/crashdatacleanup</a>. ' +
-      "This tool cannot produce the macro-enabled CAM Tool workbook the instructions describe, so the download " +
-      "below is a plain .xlsx with the same idea: Document Number identifies the crash, and every field you " +
-      "change is shaded yellow.</p>";
+    h += '<p class="note">Every field the parser decodes is editable here (except Row and Document Number, which ' +
+      "identify the crash). Changing a field updates every other sheet and the collision diagram immediately. " +
+      "ODOT&rsquo;s own crash data cleanup process only accepts a subset &mdash; <strong>Crash Type, County Cd, " +
+      "ODOT Crash Location, NLFID, County True Log, On Road, At Road, ODOT Latitude, ODOT Longitude and ODOT FIPS " +
+      "Code</strong> (see <em>HowToCompleteCrashDataCleanup.pdf</em>, Table 1) &mdash; and for each row wants either " +
+      "NLFID and County True Log, or ODOT Latitude and ODOT Longitude. Submit corrections to the ODOT Safety Team: " +
+      '<a href="https://odot.formstack.com/forms/crashdatacleanup" target="_blank" rel="noopener">' +
+      "odot.formstack.com/forms/crashdatacleanup</a>. This tool can't produce the macro-enabled CAM Tool workbook " +
+      "the instructions describe, so <strong>Download highlighted .xlsx</strong> is a plain-format substitute: " +
+      "Document Number identifies each crash, and every field you've changed is shaded yellow.</p>";
 
-    $("#sheet-cleanup .body").innerHTML = h;
-    $$("#sheet-cleanup .cell-in").forEach(function (el) {
-      var handler = function () {
-        var i = +el.getAttribute("data-row"), key = el.getAttribute("data-field");
-        var r = rows.filter(function (x) { return x.i === i; })[0];
+    host.innerHTML = h;
+    var box = $(".datatable", host);
+    if (box) { box.scrollTop = scrollTop; box.scrollLeft = scrollLeft; }
+
+    $$(".cell-in", host).forEach(function (el) {
+      var key = el.getAttribute("data-field");
+      var f = FULL_COLUMNS.filter(function (x) { return x.key === key; })[0];
+      var commit = function () {
+        var r = byId.get(+el.getAttribute("data-row"));
         if (!r) return;
-        var f = CLEANUP_FIELDS.filter(function (x) { return x.key === key; })[0];
         var val = el.value;
         if (f.upper) { val = val.toUpperCase(); el.value = val; }
-        var original = r[key] === undefined || r[key] === null ? "" : String(r[key]);
-        var edits = state.cleanupEdits[i];
-        if (val === original) {
-          if (edits) { delete edits[key]; if (!Object.keys(edits).length) delete state.cleanupEdits[i]; }
-          el.classList.remove("hl");
-        } else {
-          if (!edits) edits = state.cleanupEdits[i] = {};
-          edits[key] = val;
-          el.classList.add("hl");
-        }
-        updateCleanupToolbar();
+        var before = getField(r, key);
+        setField(r, key, val);
+        applySideEffects(r, key);
+        markEdited(r, key, before);
+        refresh();
       };
-      el.addEventListener(el.tagName === "SELECT" ? "change" : "input", handler);
+      el.addEventListener("change", commit);
+      if (el.tagName !== "SELECT") {
+        el.addEventListener("keydown", function (e) { if (e.key === "Enter") el.blur(); });
+      }
     });
-    $("#cleanup-xlsx").onclick = exportCleanupXlsx;
-    $("#cleanup-reset").onclick = function () {
-      state.cleanupEdits = {};
-      renderCleanup();
-      gridifyAll();
-    };
+    $("#x-csv").onclick = exportCSV;
+    $("#x-xlsx").onclick = exportHighlightedXlsx;
+    $("#x-reset").onclick = function () { resetEdits(); refresh(); };
   }
-  function updateCleanupToolbar() {
-    var n = cleanupEditCount();
-    var pill = $("#sheet-cleanup .toolbar .pill");
-    if (pill) {
-      pill.textContent = n + " cell" + (n === 1 ? "" : "s") + " changed";
-      pill.style.color = n ? "var(--hl-ink)" : "";
-      pill.style.borderColor = n ? "var(--hl-ink)" : "";
-    }
-    var reset = $("#cleanup-reset");
-    if (reset) reset.disabled = !n;
-  }
-  function exportCleanupXlsx() {
+
+  function exportHighlightedXlsx() {
     if (!window.CAMXlsx || !window.JSZip) { msg("The .xlsx writer didn't load — check your connection and reload.", "err"); return; }
-    var headers = ["Row", "Document Number"].concat(CLEANUP_FIELDS.map(function (f) { return f.label; }));
-    var widths = [6, 16].concat(CLEANUP_FIELDS.map(function (f) { return f.width || 20; }));
+    var headers = ["OH-1"].concat(FULL_COLUMNS.map(function (f) { return f.label; }));
+    var widths = [8].concat(FULL_COLUMNS.map(function (f) { return f.width || 16; }));
     var rows = state.records.map(function (r) {
-      var row = [r.i, String(r.docNbr)];
-      CLEANUP_FIELDS.forEach(function (f) {
-        var v = cleanupValue(r, f.key);
-        var edited = cleanupIsEdited(r, f.key);
-        if (f.type === "number" && v !== "" && isFinite(parseFloat(v))) v = parseFloat(v);
+      var row = [r.reportLink || ""];
+      FULL_COLUMNS.forEach(function (f) {
+        var v = getField(r, f.key);
+        var edited = isEdited(r, f.key);
+        if (typeof v === "number") { /* keep numeric */ } else if (v !== "" && /^-?\d+(\.\d+)?$/.test(v)) v = parseFloat(v);
         row.push(edited ? { v: v, hl: true } : v);
       });
       return row;
     });
     var name = (state.heading || "crash-data").replace(/[^\w-]+/g, "_") + "_corrected.xlsx";
-    window.CAMXlsx.build({ sheetName: "Crash Data Cleanup", headers: headers, rows: rows, widths: widths })
+    window.CAMXlsx.build({ sheetName: "Full Crash Data", headers: headers, rows: rows, widths: widths })
       .then(function (blob) { download(name, blob); })
       .catch(function () { msg("Could not build the .xlsx file.", "err"); });
   }
@@ -824,14 +907,14 @@
     } catch (e) { /* sandboxed viewers block page-initiated saves */ }
   }
   function exportCSV() {
-    var head = ["OH1_Link"].concat(COLS.map(function (c) { return c[0]; }));
+    var head = ["OH1_Link"].concat(FULL_COLUMNS.map(function (f) { return f.label; }));
     var q = function (v) {
       v = v === undefined || v === null ? "" : String(v);
       return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
     };
     var lines = [head.map(q).join(",")];
     state.records.forEach(function (r) {
-      lines.push([r.reportLink].concat(COLS.map(function (c) { return c[1](r); })).map(q).join(","));
+      lines.push([r.reportLink].concat(FULL_COLUMNS.map(function (f) { return getField(r, f.key); })).map(q).join(","));
     });
     download((state.heading || "cam-analysis").replace(/[^\w\-]+/g, "_") + ".csv", lines.join("\n"));
   }
@@ -882,7 +965,7 @@
 
     renderSetup(); renderSummary(); renderAnalysis(); renderUnit1();
     renderRSI(); renderProportions(); renderEmphasis(); renderTree();
-    renderDiagram(); renderData(); renderCleanup();
+    renderDiagram(); renderData();
     gridifyAll();
   }
   function kpi(label, value, cls) {
@@ -932,7 +1015,6 @@
     catch (e) { msg(e.message, "err"); return; }
     state.all = recs;
     state.fileName = name || "";
-    state.cleanupEdits = {};
     var y = A.yearsOf(recs);
     state.filters = { yearFrom: y.min, yearTo: y.max, authority: "All" };
 
@@ -992,8 +1074,7 @@
 
   var SHEETS = [
     { id: "setup", label: "Setup", group: "neutral", cell: "Setup" },
-    { id: "data", label: "Full Crash Data", group: "neutral", cell: "Data" },
-    { id: "cleanup", label: "Crash Data Cleanup", group: "blue", cell: "Cleanup" },
+    { id: "data", label: "Full Crash Data", group: "blue", cell: "Data" },
     { id: "summary", label: "Quick Summary", group: "gold", cell: "QuickSumm" },
     { id: "analysis", label: "Crash Analysis", group: "gold", cell: "CrashAnl" },
     { id: "unit1", label: "Unit 1 Analysis", group: "gold", cell: "Unit1" },
@@ -1053,7 +1134,7 @@
     $("#sample-r").onclick = function () { loadAndShow(window.CAMSAMPLE, window.CAMSAMPLENAME); };
     $("#csv-r").onclick = function () { exportCSV(); };
     $("#svg-r").onclick = function () { show("diagram"); setTimeout(saveSVG, 60); };
-    $("#xlsx-r").onclick = function () { exportCleanupXlsx(); };
+    $("#xlsx-r").onclick = function () { exportHighlightedXlsx(); };
     $("#print-r").onclick = function () { window.print(); };
 
     $("#fb-heading").oninput = function () {

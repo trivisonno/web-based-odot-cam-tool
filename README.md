@@ -21,7 +21,7 @@ The page opens on a bundled sample export (Denison Ave at W 65th St, Cleveland,
 
 | Sheet in the workbook | Here |
 |---|---|
-| Full Crash Data | **Full crash data** — decoded table, OH-1 links, CSV export |
+| Full Crash Data | **Full crash data** — every field, editable, OH-1 links, CSV/xlsx export |
 | Quick Summary | **Quick summary** — ~30 count/percent tables |
 | Crash Analysis | **Crash analysis** — crash type × severity matrix, harm by condition, charts |
 | Unit 1 Analysis | **Unit 1 analysis** |
@@ -35,31 +35,42 @@ Not carried over: the workbook's aerial-image import, Pathweb/roadview links,
 CRF table and the hidden HSIP submission sheets. Crash-DRAW is a separate ODOT tool
 and is out of scope.
 
-## Crash data cleanup
+## Full crash data is editable, live
 
-A tenth sheet, **Crash Data Cleanup**, follows `HowToCompleteCrashDataCleanup.pdf`
-rather than the CAM Tool itself: it's ODOT's separate process for reporting bad crash
-data back for correction. Only the ten fields that PDF's Table 1 says are correctable
-are editable — Crash Type and ODOT Crash Location are dropdowns built from that PDF's
-Table 2 and Table 3 so only valid values can be entered; County Cd, NLFID, County True
-Log, On Road, At Road, ODOT Latitude, ODOT Longitude and ODOT FIPS Code are free text.
-Document Number is always shown and never editable, per the PDF's own rule that it's
-required on every submission.
+Every field the parser decodes — about 85 columns, including both units' full
+detail — is editable directly in the **Full Crash Data** sheet. There's no separate
+"corrected copy": an edit mutates the actual crash record, so every other sheet
+(Quick Summary, Crash Analysis, RSI, Proportions, Emphasis Area, Crash Tree) and the
+collision diagram recompute from it immediately. Change a crash's severity to fatal
+and its diagram symbol turns red on the next render; change its crash type and it
+moves to a new zone. Row and Document Number stay read-only — they identify the crash.
+
+Coded fields (Severity, Crash Type, Traffic Control, Object Struck, and so on) are
+dropdowns built from the same `RefTables` lookups the rest of the app uses, so only
+legal values can be entered; editing Severity or Crash Type also updates the derived
+codes those drive (severity code/FI classification, crash-type code/single-vehicle
+vs. multi-vehicle) so the recomputation stays correct. Text inputs commit on blur or
+Enter, not on every keystroke — the spreadsheet convention, and what keeps a live
+recompute across nine sheets from running on every character typed.
 
 Editable fields render in blue (the common spreadsheet-modeling convention for
-hardcoded inputs); a field you actually change turns yellow, matching the PDF's own
-instruction to "highlight any changed fields." Editing follows filters like every
-other sheet, so switching years or maintenance authority doesn't discard your edits —
-they're tracked by row, not by what's currently on screen.
+hardcoded inputs); a field you've actually changed turns yellow. Edits are tracked
+per row, not per screen, so changing the year filter or maintenance authority never
+discards them, and **Reset changes** reverts everything to the loaded values.
 
-**Download corrected file (.xlsx)** — on the sheet itself, or **Corrected XLSX** in
-the ribbon — writes a real `.xlsx` with the changed cells shaded yellow. `assets/xlsx.js`
-builds this by hand rather than through a library: the free build of SheetJS (the
-common browser-side `.xlsx` writer) can't set cell fill colors on write, which is
-the one thing this file needs to do. It packages a handful of OOXML parts with
-[JSZip](https://cdnjs.cloudflare.com/ajax/libs/jszip/) instead — no other dependency.
-This tool can't produce the macro-enabled CAM Tool workbook the PDF describes, so the
-`.xlsx` is a substitute serving the same purpose for the same
+This design follows `HowToCompleteCrashDataCleanup.pdf` — ODOT's separate process for
+reporting bad crash data back for correction — which asks for the CAM Tool with
+changed fields highlighted. Of the ~85 editable columns here, that process only
+accepts ten (Crash Type, County Cd, ODOT Crash Location, NLFID, County True Log, On
+Road, At Road, ODOT Latitude, ODOT Longitude, ODOT FIPS Code); a note under the table
+names them. **Download highlighted .xlsx** — on the sheet, or in the ribbon — writes
+a real `.xlsx` of the full table with every changed cell shaded yellow, matching that
+instruction. `assets/xlsx.js` builds this by hand rather than through a library: the
+free build of SheetJS (the common browser-side `.xlsx` writer) can't set cell fill
+colors on write, which is the one thing this file needs to do. It packages a handful
+of OOXML parts with [JSZip](https://cdnjs.cloudflare.com/ajax/libs/jszip/) instead —
+no other dependency. This tool can't produce the macro-enabled CAM Tool workbook the
+PDF describes, so the `.xlsx` is a substitute serving the same purpose for the same
 [submission form](https://odot.formstack.com/forms/crashdatacleanup).
 
 ## Collision diagram

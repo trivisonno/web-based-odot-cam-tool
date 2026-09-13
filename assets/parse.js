@@ -223,5 +223,8 @@
     return out;
   }
 
-  global.CAMParse = { build: build, parseCSV: parseCSV, MONTHS: MONTHS };
+  global.CAMParse = {
+    build: build, parseCSV: parseCSV, MONTHS: MONTHS,
+    MV_TYPES: MV_TYPES, bandSpeed: bandSpeed, speedBand: speedBand
+  };
 })(window);
