@@ -348,6 +348,8 @@ svg.cd .cd-lbl { font-family: var(--cell); font-size: 9.2px; fill: var(--ink-2);
 .cell-in:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
 .cell-in.hl { background: var(--hl-bg); color: var(--hl-ink); border-color: transparent; font-weight: 600; }
 select.cell-in { min-width: 70px; }
+.print-val { display: none; } /* shown only in print, in place of .cell-in -- see @media print */
+.print-val.hl { background: var(--hl-bg); color: var(--hl-ink); font-weight: 600; padding: 1px 3px; }
 .readonly-cell { color: var(--ink-2); }
 .doc-cell { font-weight: 700; color: var(--ink); }
 .edit-legend { display: flex; gap: 18px; flex-wrap: wrap; padding: 10px 12px; font-size: 12px; font-family: var(--ui); }
@@ -406,13 +408,37 @@ select.cell-in { min-width: 70px; }
 }
 
 @media print {
-  .titlebar, .tabbar, .statusbar, .toolbar, .controls { display: none !important; }
+  /* A printed report is always plain light-on-white, regardless of the
+     viewer's on-screen theme -- avoids near-invisible text if the page
+     happened to be showing dark-mode ink colors when Print was used. */
+  :root, :root[data-theme="dark"] {
+    --paper: #fff; --sheet: #fff; --sheet-2: #f2f2f2;
+    --ink: #14171a; --ink-2: #444; --ink-3: #666;
+    --rule: #999; --rule-2: #ccc; --gridhead-bg: #eee; --gridhead-ink: #333;
+    --accent: #217346; --accent-dk: #14572f; --injury: #1155cc; --input-ink: #1155cc;
+    --hl-bg: #fff2ac; --hl-ink: #4a3200;
+  }
+  .titlebar, .tabbar, .statusbar, .toolbar { display: none !important; }
+  .no-print { display: none !important; }
   .sheet { display: block !important; }
   .sheet + .sheet { page-break-before: always; }
   body, html { height: auto; overflow: visible; }
   .xlapp { height: auto; overflow: visible; }
   .worksheet { overflow: visible; }
   body { background: #fff; }
+
+  /* Full Crash Data's table is built for on-screen scrolling, not paper --
+     an overflow:auto box only prints whatever fit in it on screen. Let it
+     flow instead: rows paginate normally, and columns past the page's
+     width are simply cut off there, same as any other wide printed table. */
+  .datatable { max-height: none !important; overflow: visible !important; }
+  thead tr.xl-colhead th, thead tr:not(.xl-colhead) th,
+  th.xl-rownum, td.xl-rownum, th.xl-corner { position: static !important; }
+
+  /* Print the resolved value, not the live form control -- sidesteps every
+     browser's own quirks around printing <input>/<select> current values. */
+  .cell-in { display: none !important; }
+  .print-val { display: inline !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

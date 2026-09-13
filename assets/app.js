@@ -778,16 +778,21 @@
       return '<span class="readonly-cell' + (f.bold ? " doc-cell" : "") + '">' + esc(getField(r, f.key)) + "</span>";
     }
     var val = getField(r, f.key);
-    var hl = isEdited(r, f.key) ? " hl" : "";
+    var edited = isEdited(r, f.key);
+    var hl = edited ? " hl" : "";
     var attrs = ' class="cell-in' + hl + '" data-row="' + r.i + '" data-field="' + f.key + '"';
+    /* Printed pages show this plain-text value instead of the live control --
+       see the @media print rules for why. */
+    var printVal = '<span class="print-val' + (edited ? " hl" : "") + '">' +
+      esc(val === "" ? "–" : val) + "</span>";
     if (f.type === "select") {
       if (val !== "" && opts.indexOf(val) < 0) opts = opts.concat([val]);
-      return '<select' + attrs + ' style="width:' + selWidth + 'px">' + opts.map(function (o) {
+      return printVal + '<select' + attrs + ' style="width:' + selWidth + 'px">' + opts.map(function (o) {
         return '<option value="' + esc(o) + '"' + (o === val ? " selected" : "") + ">" + esc(o) + "</option>";
       }).join("") + "</select>";
     }
     var extra = f.maxlength ? ' maxlength="' + f.maxlength + '"' : "";
-    return '<input type="text"' + attrs + extra + ' value="' + esc(val) + '" autocomplete="off" spellcheck="false">';
+    return printVal + '<input type="text"' + attrs + extra + ' value="' + esc(val) + '" autocomplete="off" spellcheck="false">';
   }
 
   function renderData() {
@@ -811,7 +816,7 @@
 
     var h =
       '<section class="plate"><div class="edit-legend">' +
-      '<span class="swatch"><span class="box input"></span>Editable field</span>' +
+      '<span class="swatch no-print"><span class="box input"></span>Editable field</span>' +
       '<span class="swatch"><span class="box hl"></span>Changed from the loaded value</span>' +
       "</div></section>" +
       '<div class="toolbar" style="margin-top:12px">' +
@@ -835,7 +840,7 @@
     });
     h += "</tbody></table></div></div>";
 
-    h += '<p class="note">Every field the parser decodes is editable here (except Row and Document Number, which ' +
+    h += '<p class="note no-print">Every field the parser decodes is editable here (except Row and Document Number, which ' +
       "identify the crash). Changing a field updates every other sheet and the collision diagram immediately. " +
       "ODOT&rsquo;s own crash data cleanup process only accepts a subset &mdash; <strong>Crash Type, County Cd, " +
       "ODOT Crash Location, NLFID, County True Log, On Road, At Road, ODOT Latitude, ODOT Longitude and ODOT FIPS " +
