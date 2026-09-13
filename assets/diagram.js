@@ -311,11 +311,18 @@
           '<circle class="g" cx="0" cy="10" r="3.6"/></g>');
       });
     } else if (control === "Stop Sign" || control === "Yield Sign" || control === "Flasher") {
-      var glyph = control === "Yield Sign" ? "YIELD" : control === "Flasher" ? "✵" : "STOP";
+      /* Real sign shapes, matching the CAM Tool's own icons (a red octagon
+         for Stop; the workbook has no Yield icon at all, so this is drawn
+         to the standard MUTCD downward-pointing triangle instead). */
+      var kind = control === "Yield Sign" ? "yield" : control === "Flasher" ? "flasher" : "stop";
+      var shape = kind === "yield"
+        ? '<path class="tri" d="M0 15.3L-13.2 -7.65L13.2 -7.65Z"/>'
+        : kind === "flasher"
+          ? '<circle r="14"/><text y="5">✵</text>'
+          : '<path class="oct" d="M12.2 5.05L5.05 12.2L-5.05 12.2L-12.2 5.05L-12.2 -5.05L-5.05 -12.2L5.05 -12.2L12.2 -5.05Z"/><text y="3.5">STOP</text>';
       [[CX - HW - 22, CY - HH - 22], [CX + HW + 22, CY - HH - 22],
       [CX + HW + 22, CY + HH + 22], [CX - HW - 22, CY + HH + 22]].forEach(function (p) {
-        g.push('<g class="ctl stop" transform="translate(' + p[0] + " " + p[1] + ')">' +
-          '<circle r="15"/><text y="4">' + glyph + "</text></g>");
+        g.push('<g class="ctl ' + kind + '" transform="translate(' + p[0] + " " + p[1] + ')">' + shape + "</g>");
       });
     }
     return g.join("");
