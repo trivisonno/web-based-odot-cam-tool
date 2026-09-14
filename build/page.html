@@ -1,6 +1,6 @@
 <!-- Generated from index.html; edit that file, not this one. -->
 <title>CAM Tool Web</title>
-<meta name="description" content="Browser-based crash analysis module for ODOT GCAT exports — summary sheets, relative severity index, proportions, crash tree and collision diagram.">
+<meta name="description" content="Browser-based crash analysis module for ODOT GCAT exports - summary sheets, relative severity index, proportions, crash tree and collision diagram.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&display=swap">
@@ -9,7 +9,7 @@
 
   <div class="titlebar">
     <svg class="app-icon" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="4"/><path class="x" d="M9 9l14 14M23 9L9 23"/></svg>
-    <span class="app-name" id="titlebar-name">Untitled site &ndash; CAM Tool Web</span>
+    <span class="app-name" id="titlebar-name">Untitled site - CAM Tool Web</span>
     <span class="app-sub">ODOT Crash Analysis Module</span>
     <button class="btn" id="print-btn">Print</button>
   </div>
@@ -17,14 +17,20 @@
   <main class="worksheet">
     <div class="sheet-area">
 
+      <div class="print-header" id="print-header">
+        <h1 id="ph-name"></h1>
+        <p class="ph-meta" id="ph-meta"></p>
+        <div class="stats" id="ph-stats"></div>
+      </div>
+
       <section class="sheet on" id="sheet-setup">
         <header>
           <h3>Setup &amp; inputs</h3>
-          <p>Export a crash file from AASHTOWare Safety using the <strong>GCAT Format</strong> query, then load the CSV here. Everything is computed in this page &mdash; nothing is uploaded.</p>
+          <p>Export a crash file from AASHTOWare Safety using the <strong>GCAT Format</strong> query, then load the CSV here. Everything is computed in this page - nothing is uploaded.</p>
         </header>
         <div class="dropzone" id="dropzone">
           <h4>Drop a GCAT CSV export here</h4>
-          <p>Or choose a file. The tool reads the same columns the CAM Tool&rsquo;s <em>TIMS &ndash; GCAT Import</em> reads, matched by column name.</p>
+          <p>Or choose a file. The tool reads the same columns the CAM Tool&rsquo;s <em>TIMS - GCAT Import</em> reads, matched by column name.</p>
           <div class="dz-actions">
             <button class="btn primary" id="pick">Choose CSV file</button>
             <button class="btn" id="sample">Load sample site</button>
@@ -54,7 +60,7 @@
       <section class="sheet" id="sheet-unit1">
         <header>
           <h3>Unit 1 analysis</h3>
-          <p>Everything the report records about unit 1 &mdash; typically the at-fault vehicle.</p>
+          <p>Everything the report records about unit 1 - typically the at-fault vehicle.</p>
         </header>
         <div class="body"></div>
       </section>
@@ -102,7 +108,7 @@
       <section class="sheet" id="sheet-data">
         <header>
           <h3>Full crash data</h3>
-          <p>The decoded crash table &mdash; every field, and every field is editable. Column A links to the OH-1
+          <p>The decoded crash table - every field, and every field is editable. Column A links to the OH-1
           report on the ODOT crash report service. Edits here update every other sheet immediately; download a copy
           with the changed cells highlighted for ODOT&rsquo;s crash data cleanup process.</p>
         </header>
@@ -122,8 +128,8 @@
     <span class="sb-sep"></span>
     <span class="sb-item">Crashes: <b id="sb-crashes">0</b></span>
     <span class="sb-item">Fatal &amp; injury: <b id="sb-fi">0</b></span>
-    <span class="sb-item">Years: <b id="sb-years">&ndash;</b></span>
-    <span class="sb-item sb-file">File: <b id="sb-file">&ndash;</b></span>
+    <span class="sb-item">Years: <b id="sb-years">-</b></span>
+    <span class="sb-item sb-file">File: <b id="sb-file">-</b></span>
     <span class="sb-grow"></span>
   </div>
 </div>

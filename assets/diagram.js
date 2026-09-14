@@ -154,7 +154,7 @@
 
   var LETTER_NAME = {
     A: "Rear end", B: "Fixed object", C: "Angle", D: "Angle (same approach)",
-    E: "Animal", F: "Sideswipe – passing", G: "Head on", H: "Sideswipe – meeting",
+    E: "Animal", F: "Sideswipe - passing", G: "Head on", H: "Sideswipe - meeting",
     I: "Backing", J: "Other / non-collision", K: "Pedestrian or pedalcycle",
     L: "Parked vehicle", M: "Left turn", N: "Right turn", O: "Right turn (opposing)"
   };

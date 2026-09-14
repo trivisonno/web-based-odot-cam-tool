@@ -176,12 +176,12 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function pct(v, d) {
-    if (v === null || v === undefined || !isFinite(v)) return "–";
+    if (v === null || v === undefined || !isFinite(v)) return "-";
     return (v * 100).toFixed(d === undefined ? 1 : d) + "%";
   }
   function money(v) { return "$" + Math.round(v).toLocaleString("en-US"); }
   function num(v, d) {
-    if (v === null || v === undefined || !isFinite(v)) return "–";
+    if (v === null || v === undefined || !isFinite(v)) return "-";
     return Number(v).toLocaleString("en-US", { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
   }
 
@@ -278,7 +278,7 @@
 
       '<div class="stats">' +
       stat("Crashes", num(hd.crashes)) +
-      stat("Years analysed", yrs.min === yrs.max ? String(yrs.min) : yrs.min + "–" + yrs.max) +
+      stat("Years analysed", yrs.min === yrs.max ? String(yrs.min) : yrs.min + "-" + yrs.max) +
       stat("Crashes / year", hd.perYear.toFixed(2)) +
       stat("Fatalities", num(hd.fatalities), "fatal") +
       stat("Serious injuries", num(hd.serious), "serious") +
@@ -306,7 +306,7 @@
       "</div>" +
       '<p class="note">These four inputs replace the manual entries the spreadsheet asks for on the ' +
       '<strong>RelativeSeverityIndex</strong> and <strong>Proportions</strong> sheets. They are pre-filled from the ' +
-      "file where the data allows it — check them before quoting the numbers.</p>";
+      "file where the data allows it - check them before quoting the numbers.</p>";
 
     $("#f-yfrom").value = String(state.filters.yearFrom);
     $("#f-yto").value = String(state.filters.yearTo);
@@ -318,7 +318,7 @@
 
     $("#f-heading").oninput = function () {
       state.heading = this.value;
-      $("#titlebar-name").textContent = (this.value || "Untitled site") + " – CAM Tool Web";
+      setTitle(this.value);
     };
     $("#f-yfrom").onchange = function () { state.filters.yearFrom = +this.value; refresh(); };
     $("#f-yto").onchange = function () { state.filters.yearTo = +this.value; refresh(); };
@@ -330,6 +330,37 @@
   }
   function stat(label, value, cls) {
     return '<div class="stat ' + (cls || "") + '"><span>' + label + "</span><strong>" + value + "</strong></div>";
+  }
+
+  /* Print-only stand-in for the Setup sheet: carries the site name and the
+     basic identifying info into the printed report now that Setup itself
+     is excluded (it's data-entry chrome, not report content). */
+  function renderPrintHeader() {
+    var nameEl = $("#ph-name"), metaEl = $("#ph-meta"), statsEl = $("#ph-stats");
+    if (!state.all.length) { nameEl.textContent = ""; metaEl.textContent = ""; statsEl.innerHTML = ""; return; }
+    var hd = A.headline(state.records);
+    var yrs = A.yearsOf(state.all);
+    var yearsTxt = yrs.min === yrs.max ? String(yrs.min) : yrs.min + "-" + yrs.max;
+    var districtTxt = state.site.district === "STW" ? "Statewide" : "District " + state.site.district;
+
+    nameEl.textContent = state.heading || "Untitled site";
+    metaEl.textContent = [
+      "Years analysed: " + yearsTxt,
+      "ODOT district: " + districtTxt,
+      "Urban area: " + state.site.urban,
+      "Freeway: " + state.site.freeway,
+      "Site type: " + state.site.siteType,
+      state.filters.authority !== "All" ? "Maintenance authority: " + state.filters.authority : null
+    ].filter(Boolean).join(" · ");
+
+    statsEl.innerHTML =
+      stat("Crashes", num(hd.crashes)) +
+      stat("Crashes / year", hd.perYear.toFixed(2)) +
+      stat("Fatalities", num(hd.fatalities), "fatal") +
+      stat("Serious injuries", num(hd.serious), "serious") +
+      stat("Fatal &amp; all injury", num(hd.fiCrashes)) +
+      stat("Percent injury", pct(hd.pctInjury)) +
+      stat("EPDO index", hd.epdo.toFixed(2));
   }
 
   function renderSummary() {
@@ -358,7 +389,7 @@
     ["Work zone related", q.workZone], ["Alcohol related", q.alcohol],
     ["Drug related (incl. marijuana)", q.drug], ["Marijuana related", q.marijuana],
     ["Speed related", q.speed], ["Distracted driver", q.distracted],
-    ["Older driver (65+)", q.older], ["Young driver (15–25)", q.young],
+    ["Older driver (65+)", q.older], ["Young driver (15-25)", q.young],
     ["Motorcycle involved", q.motorcycle]].forEach(function (p) {
       h += plate(p[0], null, countTable(p[1], p[0], { bars: false }));
     });
@@ -455,14 +486,14 @@
       '<th class="n">RSI multiplier</th><th class="n">Crash type severity</th></tr></thead><tbody>';
     r.lines.forEach(function (l) {
       t += "<tr><td>" + esc(l.type) + '</td><td class="n">' + (l.count || "·") +
-        '</td><td class="n">' + (l.mult ? money(l.mult) : "–") +
+        '</td><td class="n">' + (l.mult ? money(l.mult) : "-") +
         '</td><td class="n">' + (l.cost ? money(l.cost) : "·") + "</td></tr>";
     });
     t += '<tr class="total"><td>Totals</td><td class="n">' + r.totalCrashes +
       '</td><td class="n"></td><td class="n">' + money(r.totalCost) + "</td></tr></tbody></table>";
 
     var h = '<div class="stats">' +
-      stat("RSI value", r.totalCrashes ? money(r.value) : "–") +
+      stat("RSI value", r.totalCrashes ? money(r.value) : "-") +
       stat("Total crash cost", money(r.totalCost)) +
       stat("Crashes", num(r.totalCrashes)) +
       stat("Basis", s.district === "STW" ? "Statewide" : "District " + s.district) +
@@ -526,9 +557,9 @@
     h += "</div>";
     h += '<p class="note">Shading compares the site with the statewide average for the selected site type: ' +
       '<span class="cell-bad" style="padding:1px 5px">1.5× or more</span> ' +
-      '<span class="cell-warn" style="padding:1px 5px">1.1–1.5×</span> ' +
+      '<span class="cell-warn" style="padding:1px 5px">1.1-1.5×</span> ' +
       '<span class="cell-good" style="padding:1px 5px">at or below 0.9×</span>. ' +
-      "Statewide figures are the 2021–2025 proportions shipped with the CAM Tool.</p>";
+      "Statewide figures are the 2021-2025 proportions shipped with the CAM Tool.</p>";
     $("#sheet-proportions .body").innerHTML = h;
     $("#p-site").onchange = function () {
       state.site.siteType = this.value;
@@ -557,9 +588,9 @@
   function renderEmphasis() {
     var e = A.emphasis(state.records, state.filters.authority);
     var h = '<div class="grid wide">';
-    h += plate("Ohio SHSP emphasis areas — fatalities", e.authority,
+    h += plate("Ohio SHSP emphasis areas - fatalities", e.authority,
       emphasisTable(e.fatalities, e.years, "fatalities"), "span");
-    h += plate("Ohio SHSP emphasis areas — serious injuries", e.authority,
+    h += plate("Ohio SHSP emphasis areas - serious injuries", e.authority,
       emphasisTable(e.serious, e.years, "serious injuries"), "span");
     h += "</div>";
     h += '<p class="note">Counts are people, not crashes: each cell sums the fatalities (or serious injuries) ' +
@@ -593,7 +624,7 @@
       tnode(t.signalized) + tnode(t.unsignalized) + tnode(t.intOther) + "</div></div>";
     h += '<p class="note">Each branch lists its three highest-ranked crash types. Ranking follows the CAM Tool: ' +
       "crashes first, then fatalities, then serious injuries, with the spreadsheet's own crash-type tie-break. " +
-      "Intersection branches are split by unit 1's traffic control — signal, sign or flasher, or none.</p>";
+      "Intersection branches are split by unit 1's traffic control - signal, sign or flasher, or none.</p>";
     $("#sheet-tree .body").innerHTML = h;
   }
 
@@ -655,11 +686,11 @@
 
     var h =
       '<div class="controls">' +
-      '<label class="field"><span>Street running east–west</span>' +
-      '<span class="print-val" id="d-ew-print">' + esc(d.ewStreet || "–") + '</span>' +
+      '<label class="field"><span>Street running east-west</span>' +
+      '<span class="print-val" id="d-ew-print">' + esc(d.ewStreet || "-") + '</span>' +
       '<input type="text" id="d-ew" value="' + esc(d.ewStreet) + '"></label>' +
-      '<label class="field"><span>Street running north–south</span>' +
-      '<span class="print-val" id="d-ns-print">' + esc(d.nsStreet || "–") + '</span>' +
+      '<label class="field"><span>Street running north-south</span>' +
+      '<span class="print-val" id="d-ns-print">' + esc(d.nsStreet || "-") + '</span>' +
       '<input type="text" id="d-ns" value="' + esc(d.nsStreet) + '"></label>' +
       '<label class="field"><span>Crashes shown</span><select id="d-scope">' +
       '<option value="all">All crashes in file</option>' +
@@ -670,7 +701,7 @@
       ["auto", "Signal", "Stop Sign", "Yield Sign", "Flasher", "None"].map(function (c) {
         return '<option value="' + c + '">' + (c === "auto" ? "From the data (" + control + ")" : c) + "</option>";
       }).join("") + "</select></label>" +
-      '<div class="field" style="grid-column:1/-1"><span style="font-family:var(--cond);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)">Diagram label options</span>' +
+      '<div class="field no-print" style="grid-column:1/-1"><span style="font-family:var(--cond);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)">Diagram label options</span>' +
       '<div style="display:grid;gap:0 14px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:4px">' +
       labelChecks + "</div></div>" +
       "</div>" +
@@ -692,13 +723,13 @@
       '<span><b style="background:var(--injury)"></b>Injury</span>' +
       '<span><b style="background:var(--pdo)"></b>PDO</span></div></section>' +
       '<section class="plate" style="margin-top:14px"><h4>Diagram label key</h4><div class="legend">' + legend + "</div></section>" +
-      '<section class="plate detail" style="margin-top:14px" id="d-detail"><h4>Crash detail</h4>' +
+      '<section class="plate detail no-print" style="margin-top:14px" id="d-detail"><h4>Crash detail</h4>' +
       '<dl><dt>Select</dt><dd>Click any symbol on the diagram.</dd></dl></section>' +
       "</div></div>" +
 
-      '<p class="note">Symbols are positioned by the at-fault unit’s crash type and its from/to directions, ' +
+      '<p class="note no-print">Symbols are positioned by the at-fault unit’s crash type and its from/to directions, ' +
       "using the same zone and rotation rules as the spreadsheet. Where a movement has more crashes than its " +
-      "zone can hold, the extras go to the <strong>Crash Overflow Zone</strong> — as in the CAM Tool, those " +
+      "zone can hold, the extras go to the <strong>Crash Overflow Zone</strong> - as in the CAM Tool, those " +
       "need a hand. The most accurate diagram still comes from reading the OH-1 reports and correcting the " +
       "crash type and direction fields before plotting.</p>";
 
@@ -709,13 +740,13 @@
     $("#d-ew").oninput = function () {
       d.ewStreet = this.value;
       this.setAttribute("value", this.value);
-      $("#d-ew-print").textContent = this.value || "–";
+      $("#d-ew-print").textContent = this.value || "-";
       redrawSvg();
     };
     $("#d-ns").oninput = function () {
       d.nsStreet = this.value;
       this.setAttribute("value", this.value);
-      $("#d-ns-print").textContent = this.value || "–";
+      $("#d-ns-print").textContent = this.value || "-";
       redrawSvg();
     };
     $("#d-scope").onchange = function () { d.scope = this.value; renderDiagram(); };
@@ -772,11 +803,11 @@
       ["Light / road", r.lightCond + " / " + r.roadCond],
       ["Unit 1", [r.u1.unitType, r.u1.dirFrom && r.u1.dirFrom + "→" + r.u1.dirTo, r.u1.turn].filter(Boolean).join(" · ")],
       ["U1 factor", r.u1.contrib], ["U1 control", r.u1.trafficControl],
-      ["Unit 2", [r.u2.unitType, r.u2.dirFrom && r.u2.dirFrom + "→" + r.u2.dirTo].filter(Boolean).join(" · ") || "–"],
+      ["Unit 2", [r.u2.unitType, r.u2.dirFrom && r.u2.dirFrom + "→" + r.u2.dirTo].filter(Boolean).join(" · ") || "-"],
       ["Harm", r.fatal + " fatal · " + r.serious + " serious · " + r.minor + " minor · " + r.possible + " possible"]
     ];
     var h = "<h4>Crash detail</h4><dl>" + rows.map(function (p2) {
-      return "<dt>" + esc(p2[0]) + "</dt><dd>" + esc(p2[1] === "" || p2[1] === undefined ? "–" : p2[1]) + "</dd>";
+      return "<dt>" + esc(p2[0]) + "</dt><dd>" + esc(p2[1] === "" || p2[1] === undefined ? "-" : p2[1]) + "</dd>";
     }).join("");
     if (r.reportLink) {
       h += '<dt>OH-1</dt><dd><a href="' + esc(r.reportLink) + '" target="_blank" rel="noopener">Open crash report</a></dd>';
@@ -798,7 +829,7 @@
     /* Printed pages show this plain-text value instead of the live control --
        see the @media print rules for why. */
     var printVal = '<span class="print-val' + (edited ? " hl" : "") + '">' +
-      esc(val === "" ? "–" : val) + "</span>";
+      esc(val === "" ? "-" : val) + "</span>";
     if (f.type === "select") {
       if (val !== "" && opts.indexOf(val) < 0) opts = opts.concat([val]);
       return printVal + '<select' + attrs + ' style="width:' + selWidth + 'px">' + opts.map(function (o) {
@@ -847,7 +878,7 @@
     rows.forEach(function (r) {
       h += "<tr><td>" + (r.reportLink && r.year > 2010
         ? '<a href="' + esc(r.reportLink) + '" target="_blank" rel="noopener">Report</a>'
-        : '<span style="color:var(--ink-3)">–</span>') + "</td>" +
+        : '<span style="color:var(--ink-3)">-</span>') + "</td>" +
         FULL_COLUMNS.map(function (f) {
           return "<td>" + fieldControl(r, f, optsCache[f.key], widthCache[f.key]) + "</td>";
         }).join("") + "</tr>";
@@ -894,7 +925,7 @@
   }
 
   function exportHighlightedXlsx() {
-    if (!window.CAMXlsx || !window.JSZip) { msg("The .xlsx writer didn't load — check your connection and reload.", "err"); return; }
+    if (!window.CAMXlsx || !window.JSZip) { msg("The .xlsx writer didn't load - check your connection and reload.", "err"); return; }
     var headers = ["OH-1"].concat(FULL_COLUMNS.map(function (f) { return f.label; }));
     var widths = [8].concat(FULL_COLUMNS.map(function (f) { return f.width || 16; }));
     var rows = state.records.map(function (r) {
@@ -970,18 +1001,26 @@
       '<?xml version="1.0" encoding="UTF-8"?>\n' + clone.outerHTML);
   }
 
+  /* ---------- window/tab title ---------- */
+  function setTitle(heading) {
+    var name = (heading || "Untitled site") + " - CAM Tool Web";
+    $("#titlebar-name").textContent = name;
+    document.title = name;
+  }
+
   /* ---------- orchestration ---------- */
   function refresh() {
     applyFilters();
     var hd = A.headline(state.records);
-    var yearsTxt = hd.years.min === hd.years.max ? String(hd.years.min) : hd.years.min + "–" + hd.years.max;
+    var yearsTxt = hd.years.min === hd.years.max ? String(hd.years.min) : hd.years.min + "-" + hd.years.max;
 
-    $("#titlebar-name").textContent = (state.heading || "Untitled site") + " – CAM Tool Web";
+    setTitle(state.heading);
     $("#sb-crashes").textContent = num(hd.crashes);
     $("#sb-fi").textContent = num(hd.fiCrashes);
     $("#sb-years").textContent = yearsTxt;
-    $("#sb-file").textContent = state.fileName || "–";
+    $("#sb-file").textContent = state.fileName || "-";
 
+    renderPrintHeader();
     renderSetup(); renderSummary(); renderAnalysis(); renderUnit1();
     renderRSI(); renderProportions(); renderEmphasis(); renderTree();
     renderDiagram(); renderData();
@@ -1161,7 +1200,7 @@
 
     /* Open on the bundled site so the tool shows what it does. */
     load(window.CAMSAMPLE, window.CAMSAMPLENAME);
-    msg("Showing the bundled sample export — Denison Ave at W 65th St, Cleveland. Load your own GCAT file to replace it.", "ok");
+    msg("Showing the bundled sample export - Denison Ave at W 65th St, Cleveland. Load your own GCAT file to replace it.", "ok");
     show(window.location.hash.slice(1) || "setup");
     window.addEventListener("hashchange", function () { show(window.location.hash.slice(1) || "setup"); });
   });
