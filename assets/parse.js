@@ -102,7 +102,7 @@
     var idx = {};
     head.forEach(function (h, i) { if (!(h in idx)) idx[h] = i; });
     if (!("DOCUMENT_NBR" in idx) && !("CRASH_YR" in idx)) {
-      throw new Error("This does not look like a GCAT export — no DOCUMENT_NBR or CRASH_YR column was found.");
+      throw new Error("This does not look like a GCAT export - no DOCUMENT_NBR or CRASH_YR column was found.");
     }
     /* A couple of GCAT headers differ from their ODOT field names. */
     var ALIAS = {
